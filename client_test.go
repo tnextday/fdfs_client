@@ -8,22 +8,14 @@ import (
 
 var (
 	uploadResponse *UploadFileResponse
+	trackers       = []string{"192.168.199.2"}
+	trackerPort    = 22122
 )
 
-func TestParserFdfsConfig(t *testing.T) {
-	fc := &FdfsConfigParser{}
-	c, err := fc.Read("client.conf")
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	v, _ := c.String("DEFAULT", "base_path")
-	t.Log(v)
-}
 func TestNewFdfsClientByTracker(t *testing.T) {
 	tracker := &Tracker{
-		[]string{"10.0.1.32"},
-		22122,
+		trackers,
+		trackerPort,
 	}
 	_, err := NewFdfsClientByTracker(tracker)
 	if err != nil {
@@ -31,14 +23,22 @@ func TestNewFdfsClientByTracker(t *testing.T) {
 	}
 }
 
+func mkTestClient() (*FdfsClient, error) {
+	tracker := &Tracker{
+		trackers,
+		trackerPort,
+	}
+	return NewFdfsClientByTracker(tracker)
+}
+
 func TestUploadByFilename(t *testing.T) {
-	fdfsClient, err := NewFdfsClient("client.conf")
+	fdfsClient, err := mkTestClient()
 	if err != nil {
 		t.Errorf("New FdfsClient error %s", err.Error())
 		return
 	}
 
-	uploadResponse, err = fdfsClient.UploadByFilename("client.conf")
+	uploadResponse, err = fdfsClient.UploadByFilename("README.md")
 	if err != nil {
 		t.Errorf("UploadByfilename error %s", err.Error())
 	}
@@ -48,7 +48,7 @@ func TestUploadByFilename(t *testing.T) {
 }
 
 func TestUploadByBuffer(t *testing.T) {
-	fdfsClient, err := NewFdfsClient("client.conf")
+	fdfsClient, err := mkTestClient()
 	if err != nil {
 		t.Errorf("New FdfsClient error %s", err.Error())
 		return
@@ -80,13 +80,13 @@ func TestUploadByBuffer(t *testing.T) {
 }
 
 func TestUploadSlaveByFilename(t *testing.T) {
-	fdfsClient, err := NewFdfsClient("client.conf")
+	fdfsClient, err := mkTestClient()
 	if err != nil {
 		t.Errorf("New FdfsClient error %s", err.Error())
 		return
 	}
 
-	uploadResponse, err = fdfsClient.UploadByFilename("client.conf")
+	uploadResponse, err = fdfsClient.UploadByFilename("README.md")
 	if err != nil {
 		t.Errorf("UploadByfilename error %s", err.Error())
 	}
@@ -106,13 +106,13 @@ func TestUploadSlaveByFilename(t *testing.T) {
 }
 
 func TestDownloadToFile(t *testing.T) {
-	fdfsClient, err := NewFdfsClient("client.conf")
+	fdfsClient, err := mkTestClient()
 	if err != nil {
 		t.Errorf("New FdfsClient error %s", err.Error())
 		return
 	}
 
-	uploadResponse, err = fdfsClient.UploadByFilename("client.conf")
+	uploadResponse, err = fdfsClient.UploadByFilename("README.md")
 	defer fdfsClient.DeleteFile(uploadResponse.RemoteFileId)
 	if err != nil {
 		t.Errorf("UploadByfilename error %s", err.Error())
@@ -130,16 +130,17 @@ func TestDownloadToFile(t *testing.T) {
 	}
 	t.Log(downloadResponse.DownloadSize)
 	t.Log(downloadResponse.RemoteFileId)
+	os.Remove(localFilename)
 }
 
 func TestDownloadToBuffer(t *testing.T) {
-	fdfsClient, err := NewFdfsClient("client.conf")
+	fdfsClient, err := mkTestClient()
 	if err != nil {
 		t.Errorf("New FdfsClient error %s", err.Error())
 		return
 	}
 
-	uploadResponse, err = fdfsClient.UploadByFilename("client.conf")
+	uploadResponse, err = fdfsClient.UploadByFilename("README.md")
 	defer fdfsClient.DeleteFile(uploadResponse.RemoteFileId)
 	if err != nil {
 		t.Errorf("UploadByfilename error %s", err.Error())
@@ -159,7 +160,7 @@ func TestDownloadToBuffer(t *testing.T) {
 }
 
 func BenchmarkUploadByBuffer(b *testing.B) {
-	fdfsClient, err := NewFdfsClient("client.conf")
+	fdfsClient, err := mkTestClient()
 	if err != nil {
 		fmt.Errorf("New FdfsClient error %s", err.Error())
 		return
@@ -193,7 +194,7 @@ func BenchmarkUploadByBuffer(b *testing.B) {
 }
 
 func BenchmarkUploadByFilename(b *testing.B) {
-	fdfsClient, err := NewFdfsClient("client.conf")
+	fdfsClient, err := mkTestClient()
 	if err != nil {
 		fmt.Errorf("New FdfsClient error %s", err.Error())
 		return
@@ -203,7 +204,7 @@ func BenchmarkUploadByFilename(b *testing.B) {
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
-		uploadResponse, err = fdfsClient.UploadByFilename("client.conf")
+		uploadResponse, err = fdfsClient.UploadByFilename("README.md")
 		if err != nil {
 			fmt.Errorf("UploadByfilename error %s", err.Error())
 		}
@@ -215,13 +216,13 @@ func BenchmarkUploadByFilename(b *testing.B) {
 }
 
 func BenchmarkDownloadToFile(b *testing.B) {
-	fdfsClient, err := NewFdfsClient("client.conf")
+	fdfsClient, err := mkTestClient()
 	if err != nil {
 		fmt.Errorf("New FdfsClient error %s", err.Error())
 		return
 	}
 
-	uploadResponse, err = fdfsClient.UploadByFilename("client.conf")
+	uploadResponse, err = fdfsClient.UploadByFilename("README.md")
 	defer fdfsClient.DeleteFile(uploadResponse.RemoteFileId)
 	if err != nil {
 		fmt.Errorf("UploadByfilename error %s", err.Error())
@@ -236,7 +237,7 @@ func BenchmarkDownloadToFile(b *testing.B) {
 		if err != nil {
 			fmt.Errorf("DownloadToFile error %s", err.Error())
 		}
-
+		os.Remove(localFilename)
 		// fmt.Println(downloadResponse.RemoteFileId)
 	}
 }

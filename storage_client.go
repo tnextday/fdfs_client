@@ -96,7 +96,7 @@ func (this *StorageClient) storageUploadFile(tc *TrackerClient,
 	}
 
 	masterFilenameLen := int64(len(masterFilename))
-	if len(storeServ.groupName) > 0 && len(masterFilename) > 0 {
+	if len(storeServ.GroupName) > 0 && len(masterFilename) > 0 {
 		uploadSlave = true
 		// #slave_fmt |-master_len(8)-file_size(8)-prefix_name(16)-file_ext_name(6)
 		//       #           -master_name(master_filename_len)-|
@@ -119,7 +119,7 @@ func (this *StorageClient) storageUploadFile(tc *TrackerClient,
 		reqBuf, err = req.marshal()
 	} else {
 		req := &uploadFileRequest{}
-		req.storePathIndex = uint8(storeServ.storePathIndex)
+		req.storePathIndex = uint8(storeServ.StorePathIndex)
 		req.fileSize = int64(fileSize)
 		req.fileExtName = fileExtName
 		reqBuf, err = req.marshal()
@@ -187,7 +187,7 @@ func (this *StorageClient) storageDeleteFile(tc *TrackerClient, storeServ *Stora
 	th.sendHeader(conn)
 
 	req := &deleteFileRequest{}
-	req.groupName = storeServ.groupName
+	req.groupName = storeServ.GroupName
 	req.remoteFilename = remoteFilename
 	reqBuf, err = req.marshal()
 	if err != nil {
@@ -242,7 +242,7 @@ func (this *StorageClient) storageDownloadFile(tc *TrackerClient,
 	req := &downloadFileRequest{}
 	req.offset = offset
 	req.downloadSize = downloadSize
-	req.groupName = storeServ.groupName
+	req.groupName = storeServ.GroupName
 	req.remoteFilename = remoteFilename
 	reqBuf, err = req.marshal()
 	if err != nil {
@@ -278,7 +278,7 @@ func (this *StorageClient) storageDownloadFile(tc *TrackerClient,
 	}
 
 	dr := &DownloadFileResponse{}
-	dr.RemoteFileId = storeServ.groupName + string(os.PathSeparator) + remoteFilename
+	dr.RemoteFileId = storeServ.GroupName + string(os.PathSeparator) + remoteFilename
 	if downloadType == FDFS_DOWNLOAD_TO_FILE {
 		dr.Content = localFilename
 	} else {

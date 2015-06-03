@@ -7,7 +7,7 @@ import (
 )
 
 type TrackerClient struct {
-	pool *ConnectionPool
+	Pool *ConnectionPool
 }
 
 func (this *TrackerClient) trackerQueryStorageStorWithoutGroup() (*StorageServer, error) {
@@ -17,7 +17,7 @@ func (this *TrackerClient) trackerQueryStorageStorWithoutGroup() (*StorageServer
 		err      error
 	)
 
-	conn, err = this.pool.Get()
+	conn, err = this.Pool.Get()
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func (this *TrackerClient) trackerQueryStorageStorWithGroup(groupName string) (*
 		err      error
 	)
 
-	conn, err = this.pool.Get()
+	conn, err = this.Pool.Get()
 	defer conn.Close()
 	if err != nil {
 		return nil, err
@@ -116,7 +116,7 @@ func (this *TrackerClient) trackerQueryStorageUpdate(groupName string, remoteFil
 	return this.trackerQueryStorage(groupName, remoteFilename, TRACKER_PROTO_CMD_SERVICE_QUERY_UPDATE)
 }
 
-func (this *TrackerClient) trackerQueryStorageFetch(groupName string, remoteFilename string) (*StorageServer, error) {
+func (this *TrackerClient) TrackerQueryStorageFetch(groupName string, remoteFilename string) (*StorageServer, error) {
 	return this.trackerQueryStorage(groupName, remoteFilename, TRACKER_PROTO_CMD_SERVICE_QUERY_FETCH_ONE)
 }
 
@@ -127,7 +127,7 @@ func (this *TrackerClient) trackerQueryStorage(groupName string, remoteFilename 
 		err      error
 	)
 
-	conn, err = this.pool.Get()
+	conn, err = this.Pool.Get()
 	defer conn.Close()
 	if err != nil {
 		return nil, err

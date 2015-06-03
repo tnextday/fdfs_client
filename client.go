@@ -3,10 +3,6 @@ package fdfs_client
 import (
 	"errors"
 	"fmt"
-	"runtime"
-	"strconv"
-	"strings"
-
 	"github.com/Sirupsen/logrus"
 )
 
@@ -38,7 +34,7 @@ type storagePool struct {
 
 func init() {
 	logger.Formatter = new(logrus.TextFormatter)
-	runtime.GOMAXPROCS(runtime.NumCPU())
+	//	runtime.GOMAXPROCS(runtime.NumCPU())
 	go func() {
 		// start a loop
 		for {
@@ -65,54 +61,6 @@ func init() {
 		}
 	}()
 }
-func getTrackerConf(confPath string) (*Tracker, error) {
-	fc := &FdfsConfigParser{}
-	cf, err := fc.Read(confPath)
-	if err != nil {
-		logger.Errorf("Read conf error :%s", err)
-		return nil, err
-	}
-	trackerListString, _ := cf.RawString("DEFAULT", "tracker_server")
-	trackerList := strings.Split(trackerListString, ",")
-
-	var (
-		trackerIpList []string
-		trackerPort   string = "22122"
-	)
-
-	for _, tr := range trackerList {
-		var trackerIp string
-		tr = strings.TrimSpace(tr)
-		parts := strings.Split(tr, ":")
-		trackerIp = parts[0]
-		if len(parts) == 2 {
-			trackerPort = parts[1]
-		}
-		if trackerIp != "" {
-			trackerIpList = append(trackerIpList, trackerIp)
-		}
-	}
-	tp, err := strconv.Atoi(trackerPort)
-	tracer := &Tracker{
-		HostList: trackerIpList,
-		Port:     tp,
-	}
-	return tracer, nil
-}
-
-func NewFdfsClient(confPath string) (*FdfsClient, error) {
-	tracker, err := getTrackerConf(confPath)
-	if err != nil {
-		return nil, err
-	}
-
-	trackerPool, err := NewConnectionPool(tracker.HostList, tracker.Port, 10, 150)
-	if err != nil {
-		return nil, err
-	}
-
-	return &FdfsClient{tracker: tracker, trackerPool: trackerPool}, nil
-}
 
 func NewFdfsClientByTracker(tracker *Tracker) (*FdfsClient, error) {
 	trackerPool, err := NewConnectionPool(tracker.HostList, tracker.Port, 10, 150)
@@ -137,7 +85,7 @@ func (this *FdfsClient) UploadByFilename(filename string) (*UploadFileResponse, 
 		return nil, err
 	}
 
-	storagePool, err := this.getStoragePool(storeServ.ipAddr, storeServ.port)
+	storagePool, err := this.getStoragePool(storeServ.IpAddr, storeServ.Port)
 	store := &StorageClient{storagePool}
 
 	return store.storageUploadByFilename(tc, storeServ, filename)
@@ -150,7 +98,7 @@ func (this *FdfsClient) UploadByBuffer(filebuffer []byte, fileExtName string) (*
 		return nil, err
 	}
 
-	storagePool, err := this.getStoragePool(storeServ.ipAddr, storeServ.port)
+	storagePool, err := this.getStoragePool(storeServ.IpAddr, storeServ.Port)
 	store := &StorageClient{storagePool}
 
 	return store.storageUploadByBuffer(tc, storeServ, filebuffer, fileExtName)
@@ -174,7 +122,7 @@ func (this *FdfsClient) UploadSlaveByFilename(filename, remoteFileId, prefixName
 		return nil, err
 	}
 
-	storagePool, err := this.getStoragePool(storeServ.ipAddr, storeServ.port)
+	storagePool, err := this.getStoragePool(storeServ.IpAddr, storeServ.Port)
 	store := &StorageClient{storagePool}
 
 	return store.storageUploadSlaveByFilename(tc, storeServ, filename, prefixName, remoteFilename)
@@ -194,7 +142,7 @@ func (this *FdfsClient) UploadSlaveByBuffer(filebuffer []byte, remoteFileId, fil
 		return nil, err
 	}
 
-	storagePool, err := this.getStoragePool(storeServ.ipAddr, storeServ.port)
+	storagePool, err := this.getStoragePool(storeServ.IpAddr, storeServ.Port)
 	store := &StorageClient{storagePool}
 
 	return store.storageUploadSlaveByBuffer(tc, storeServ, filebuffer, remoteFilename, fileExtName)
@@ -211,7 +159,7 @@ func (this *FdfsClient) UploadAppenderByFilename(filename string) (*UploadFileRe
 		return nil, err
 	}
 
-	storagePool, err := this.getStoragePool(storeServ.ipAddr, storeServ.port)
+	storagePool, err := this.getStoragePool(storeServ.IpAddr, storeServ.Port)
 	store := &StorageClient{storagePool}
 
 	return store.storageUploadAppenderByFilename(tc, storeServ, filename)
@@ -224,7 +172,7 @@ func (this *FdfsClient) UploadAppenderByBuffer(filebuffer []byte, fileExtName st
 		return nil, err
 	}
 
-	storagePool, err := this.getStoragePool(storeServ.ipAddr, storeServ.port)
+	storagePool, err := this.getStoragePool(storeServ.IpAddr, storeServ.Port)
 	store := &StorageClient{storagePool}
 
 	return store.storageUploadAppenderByBuffer(tc, storeServ, filebuffer, fileExtName)
@@ -244,7 +192,7 @@ func (this *FdfsClient) DeleteFile(remoteFileId string) error {
 		return err
 	}
 
-	storagePool, err := this.getStoragePool(storeServ.ipAddr, storeServ.port)
+	storagePool, err := this.getStoragePool(storeServ.IpAddr, storeServ.Port)
 	store := &StorageClient{storagePool}
 
 	return store.storageDeleteFile(tc, storeServ, remoteFilename)
@@ -259,12 +207,12 @@ func (this *FdfsClient) DownloadToFile(localFilename string, remoteFileId string
 	remoteFilename := tmp[1]
 
 	tc := &TrackerClient{this.trackerPool}
-	storeServ, err := tc.trackerQueryStorageFetch(groupName, remoteFilename)
+	storeServ, err := tc.TrackerQueryStorageFetch(groupName, remoteFilename)
 	if err != nil {
 		return nil, err
 	}
 
-	storagePool, err := this.getStoragePool(storeServ.ipAddr, storeServ.port)
+	storagePool, err := this.getStoragePool(storeServ.IpAddr, storeServ.Port)
 	store := &StorageClient{storagePool}
 
 	return store.storageDownloadToFile(tc, storeServ, localFilename, offset, downloadSize, remoteFilename)
@@ -279,12 +227,12 @@ func (this *FdfsClient) DownloadToBuffer(remoteFileId string, offset int64, down
 	remoteFilename := tmp[1]
 
 	tc := &TrackerClient{this.trackerPool}
-	storeServ, err := tc.trackerQueryStorageFetch(groupName, remoteFilename)
+	storeServ, err := tc.TrackerQueryStorageFetch(groupName, remoteFilename)
 	if err != nil {
 		return nil, err
 	}
 
-	storagePool, err := this.getStoragePool(storeServ.ipAddr, storeServ.port)
+	storagePool, err := this.getStoragePool(storeServ.IpAddr, storeServ.Port)
 	store := &StorageClient{storagePool}
 
 	var fileBuffer []byte

@@ -157,10 +157,10 @@ type RequestResponse interface {
 }
 
 type StorageServer struct {
-	ipAddr         string
-	port           int
-	groupName      string
-	storePathIndex int
+	IpAddr         string
+	Port           int
+	GroupName      string
+	StorePathIndex int
 }
 
 type trackerHeader struct {
