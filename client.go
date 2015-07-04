@@ -2,12 +2,13 @@ package fdfs_client
 
 import (
 	"errors"
-	"github.com/Sirupsen/logrus"
 	"os"
+
+	"github.com/Sirupsen/logrus"
 )
 
 var (
-	logger                                          = logrus.New()
+	logger = logrus.New()
 )
 
 type FdfsClient struct {
@@ -21,7 +22,6 @@ type Tracker struct {
 	Port     int
 }
 
-
 func init() {
 	logger.Formatter = new(logrus.TextFormatter)
 }
@@ -34,7 +34,6 @@ func NewFdfsClientByTracker(tracker *Tracker) (*FdfsClient, error) {
 
 	return &FdfsClient{tracker: tracker, trackerPool: trackerPool}, nil
 }
-
 
 func (this *FdfsClient) UploadByFilename(filename string) (*UploadFileResponse, error) {
 	if _, err := os.Stat(filename); err != nil {
@@ -173,4 +172,3 @@ func (this *FdfsClient) DownloadToBuffer(remoteFileId string, offset int64, down
 	var fileBuffer []byte
 	return store.DownloadToBuffer(fileBuffer, offset, downloadSize, remoteFilename)
 }
-

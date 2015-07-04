@@ -1,6 +1,7 @@
 package fdfs_client
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -8,7 +9,6 @@ import (
 	"net"
 	"os"
 	"time"
-	"bytes"
 )
 
 var ErrClosed = errors.New("pool is closed")
@@ -139,11 +139,11 @@ func (this *ConnectionPool) wrapConn(conn net.Conn) net.Conn {
 }
 
 func (this *ConnectionPool) activeConn(conn net.Conn) error {
-	th := &trackerHeader{}
-	th.cmd = FDFS_PROTO_CMD_ACTIVE_TEST
+	th := &TrackerHeader{}
+	th.Cmd = FDFS_PROTO_CMD_ACTIVE_TEST
 	th.sendHeader(conn)
 	th.recvHeader(conn)
-	if th.cmd == 100 && th.status == 0 {
+	if th.Cmd == 100 && th.Status == 0 {
 		return nil
 	}
 	return errors.New("Conn unaliviable")

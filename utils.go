@@ -22,7 +22,6 @@ func (e Errno) Error() string {
 	return errmsg
 }
 
-
 func readCstr(buff io.Reader, length int) (string, error) {
 	str := make([]byte, length)
 	n, err := buff.Read(str)
@@ -47,7 +46,6 @@ func TrimCStr(cstr []byte) string {
 	}
 	return string(cstr)
 }
-
 
 func splitRemoteFileId(remoteFileId string) ([]string, error) {
 	parts := strings.SplitN(remoteFileId, "/", 2)

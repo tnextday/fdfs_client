@@ -10,8 +10,8 @@ import (
 )
 
 type StorageClient struct {
-	IpAddr string
-	Port int
+	IpAddr         string
+	Port           int
 	GroupName      string
 	StorePathIndex int
 }
@@ -101,25 +101,25 @@ func (this *StorageClient) UploadFile(fileContent interface{}, fileSize int64, u
 		headerLen = int64(38) + masterFilenameLen
 	}
 
-	th := &trackerHeader{}
-	th.pkgLen = headerLen
-	th.pkgLen += int64(fileSize)
-	th.cmd = cmd
+	th := &TrackerHeader{}
+	th.PkgLen = headerLen
+	th.PkgLen += int64(fileSize)
+	th.Cmd = cmd
 	th.sendHeader(conn)
 
 	if uploadSlave {
-		req := &uploadSlaveFileRequest{}
-		req.masterFilenameLen = masterFilenameLen
-		req.fileSize = int64(fileSize)
-		req.prefixName = prefixName
-		req.fileExtName = fileExtName
-		req.masterFilename = masterFilename
+		req := &UploadSlaveFileRequest{}
+		req.MasterFileNameLen = masterFilenameLen
+		req.FileSize = int64(fileSize)
+		req.PrefixName = prefixName
+		req.FileExtName = fileExtName
+		req.MasterFilename = masterFilename
 		reqBuf, err = req.marshal()
 	} else {
-		req := &uploadFileRequest{}
-		req.storePathIndex = uint8(this.StorePathIndex)
-		req.fileSize = int64(fileSize)
-		req.fileExtName = fileExtName
+		req := &UploadFileRequest{}
+		req.StorePathIndex = uint8(this.StorePathIndex)
+		req.FileSize = int64(fileSize)
+		req.FileExtName = fileExtName
 		reqBuf, err = req.marshal()
 	}
 	if err != nil {
@@ -135,7 +135,7 @@ func (this *StorageClient) UploadFile(fileContent interface{}, fileSize int64, u
 		}
 	case FDFS_DOWNLOAD_TO_BUFFER:
 		if fileBuffer, ok := fileContent.([]byte); ok {
-			_, err =  conn.Write(fileBuffer)
+			_, err = conn.Write(fileBuffer)
 		}
 	}
 	if err != nil {
@@ -144,13 +144,13 @@ func (this *StorageClient) UploadFile(fileContent interface{}, fileSize int64, u
 	}
 
 	th.recvHeader(conn)
-	if th.status != 0 {
-		return nil, Errno{int(th.status)}
+	if th.Status != 0 {
+		return nil, Errno{int(th.Status)}
 	}
-	recvBuff, recvSize, err := TcpRecvResponse(conn, th.pkgLen)
+	recvBuff, recvSize, err := TcpRecvResponse(conn, th.PkgLen)
 	if recvSize <= int64(FDFS_GROUP_NAME_MAX_LEN) {
 		errmsg := "[-] Error: Storage response length is not match, "
-		errmsg += fmt.Sprintf("expect: %d, actual: %d", th.pkgLen, recvSize)
+		errmsg += fmt.Sprintf("expect: %d, actual: %d", th.PkgLen, recvSize)
 		logger.Warn(errmsg)
 		return nil, errors.New(errmsg)
 	}
@@ -165,7 +165,7 @@ func (this *StorageClient) UploadFile(fileContent interface{}, fileSize int64, u
 	return ur, nil
 }
 
-func (this *StorageClient) DeleteFile(remoteFilename string) error {
+func (this *StorageClient) DeleteFile(remoteFileId string) error {
 	var (
 		conn   net.Conn
 		reqBuf []byte
@@ -177,15 +177,15 @@ func (this *StorageClient) DeleteFile(remoteFilename string) error {
 		return err
 	}
 
-	th := &trackerHeader{}
-	th.cmd = STORAGE_PROTO_CMD_DELETE_FILE
-	fileNameLen := len(remoteFilename)
-	th.pkgLen = int64(FDFS_GROUP_NAME_MAX_LEN + fileNameLen)
+	th := &TrackerHeader{}
+	th.Cmd = STORAGE_PROTO_CMD_DELETE_FILE
+	fileNameLen := len(remoteFileId)
+	th.PkgLen = int64(FDFS_GROUP_NAME_MAX_LEN + fileNameLen)
 	th.sendHeader(conn)
 
-	req := &deleteFileRequest{}
-	req.groupName = this.GroupName
-	req.remoteFilename = remoteFilename
+	req := &DeleteFileRequest{}
+	req.GroupName = this.GroupName
+	req.RemoteFileId = remoteFileId
 	reqBuf, err = req.marshal()
 	if err != nil {
 		logger.Warnf("deleteFileRequest.marshal error :%s", err.Error())
@@ -194,8 +194,8 @@ func (this *StorageClient) DeleteFile(remoteFilename string) error {
 	conn.Write(reqBuf)
 
 	th.recvHeader(conn)
-	if th.status != 0 {
-		return Errno{int(th.status)}
+	if th.Status != 0 {
+		return Errno{int(th.Status)}
 	}
 	return nil
 }
@@ -228,16 +228,16 @@ func (this *StorageClient) DownloadFile(fileContent interface{}, offset int64, d
 		return nil, err
 	}
 
-	th := &trackerHeader{}
-	th.cmd = STORAGE_PROTO_CMD_DOWNLOAD_FILE
-	th.pkgLen = int64(FDFS_PROTO_PKG_LEN_SIZE*2 + FDFS_GROUP_NAME_MAX_LEN + len(remoteFilename))
+	th := &TrackerHeader{}
+	th.Cmd = STORAGE_PROTO_CMD_DOWNLOAD_FILE
+	th.PkgLen = int64(FDFS_PROTO_PKG_LEN_SIZE*2 + FDFS_GROUP_NAME_MAX_LEN + len(remoteFilename))
 	th.sendHeader(conn)
 
-	req := &downloadFileRequest{}
-	req.offset = offset
-	req.downloadSize = downloadSize
-	req.groupName = this.GroupName
-	req.remoteFilename = remoteFilename
+	req := &DownloadFileRequest{}
+	req.Offset = offset
+	req.DownloadSize = downloadSize
+	req.GroupName = this.GroupName
+	req.RemoteFileId = remoteFilename
 	reqBuf, err = req.marshal()
 	if err != nil {
 		logger.Warnf("downloadFileRequest.marshal error :%s", err.Error())
@@ -246,18 +246,18 @@ func (this *StorageClient) DownloadFile(fileContent interface{}, offset int64, d
 	conn.Write(reqBuf)
 
 	th.recvHeader(conn)
-	if th.status != 0 {
-		return nil, Errno{int(th.status)}
+	if th.Status != 0 {
+		return nil, Errno{int(th.Status)}
 	}
 
 	switch downloadType {
 	case FDFS_DOWNLOAD_TO_FILE:
 		if localFilename, ok := fileContent.(string); ok {
-			recvSize, err = TcpRecvFile(conn, localFilename, th.pkgLen)
+			recvSize, err = TcpRecvFile(conn, localFilename, th.PkgLen)
 		}
 	case FDFS_DOWNLOAD_TO_BUFFER:
 		if _, ok := fileContent.([]byte); ok {
-			recvBuff, recvSize, err = TcpRecvResponse(conn, th.pkgLen)
+			recvBuff, recvSize, err = TcpRecvResponse(conn, th.PkgLen)
 		}
 	}
 	if err != nil {
@@ -266,7 +266,7 @@ func (this *StorageClient) DownloadFile(fileContent interface{}, offset int64, d
 	}
 	if recvSize < downloadSize {
 		errmsg := "[-] Error: Storage response length is not match, "
-		errmsg += fmt.Sprintf("expect: %d, actual: %d", th.pkgLen, recvSize)
+		errmsg += fmt.Sprintf("expect: %d, actual: %d", th.PkgLen, recvSize)
 		logger.Warn(errmsg)
 		return nil, errors.New(errmsg)
 	}
@@ -281,7 +281,6 @@ func (this *StorageClient) DownloadFile(fileContent interface{}, offset int64, d
 	dr.DownloadSize = recvSize
 	return dr, nil
 }
-
 
 func (this *StorageClient) makeConn() (net.Conn, error) {
 	addr := fmt.Sprintf("%s:%d", this.IpAddr, this.Port)

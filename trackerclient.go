@@ -23,13 +23,13 @@ func (this *TrackerClient) QueryStorageStoreWithoutGroup() (*StorageClient, erro
 	}
 	defer conn.Close()
 
-	th := &trackerHeader{}
-	th.cmd = TRACKER_PROTO_CMD_SERVICE_QUERY_STORE_WITHOUT_GROUP_ONE
+	th := &TrackerHeader{}
+	th.Cmd = TRACKER_PROTO_CMD_SERVICE_QUERY_STORE_WITHOUT_GROUP_ONE
 	th.sendHeader(conn)
 
 	th.recvHeader(conn)
-	if th.status != 0 {
-		return nil, Errno{int(th.status)}
+	if th.Status != 0 {
+		return nil, Errno{int(th.Status)}
 	}
 
 	var (
@@ -38,7 +38,7 @@ func (this *TrackerClient) QueryStorageStoreWithoutGroup() (*StorageClient, erro
 		port           int64
 		storePathIndex uint8
 	)
-	recvBuff, _, err = TcpRecvResponse(conn, th.pkgLen)
+	recvBuff, _, err = TcpRecvResponse(conn, th.PkgLen)
 	if err != nil {
 		logger.Warnf("TcpRecvResponse error :%s", err.Error())
 		return nil, err
@@ -65,9 +65,9 @@ func (this *TrackerClient) QueryStorageStoreWithGroup(groupName string) (*Storag
 		return nil, err
 	}
 
-	th := &trackerHeader{}
-	th.cmd = TRACKER_PROTO_CMD_SERVICE_QUERY_STORE_WITH_GROUP_ONE
-	th.pkgLen = int64(FDFS_GROUP_NAME_MAX_LEN)
+	th := &TrackerHeader{}
+	th.Cmd = TRACKER_PROTO_CMD_SERVICE_QUERY_STORE_WITH_GROUP_ONE
+	th.PkgLen = int64(FDFS_GROUP_NAME_MAX_LEN)
 	th.sendHeader(conn)
 
 	groupBuffer := make([]byte, 16)
@@ -80,9 +80,9 @@ func (this *TrackerClient) QueryStorageStoreWithGroup(groupName string) (*Storag
 	}
 
 	th.recvHeader(conn)
-	if th.status != 0 {
-		logger.Warnf("recvHeader error [%d]", th.status)
-		return nil, Errno{int(th.status)}
+	if th.Status != 0 {
+		logger.Warnf("recvHeader error [%d]", th.Status)
+		return nil, Errno{int(th.Status)}
 	}
 
 	var (
@@ -90,7 +90,7 @@ func (this *TrackerClient) QueryStorageStoreWithGroup(groupName string) (*Storag
 		port           int64
 		storePathIndex uint8
 	)
-	recvBuff, _, err = TcpRecvResponse(conn, th.pkgLen)
+	recvBuff, _, err = TcpRecvResponse(conn, th.PkgLen)
 	if err != nil {
 		logger.Warnf("TcpRecvResponse error :%s", err.Error())
 		return nil, err
@@ -125,13 +125,13 @@ func (this *TrackerClient) QueryStorage(groupName string, remoteFilename string,
 		return nil, err
 	}
 
-	th := &trackerHeader{}
-	th.pkgLen = int64(FDFS_GROUP_NAME_MAX_LEN + len(remoteFilename))
-	th.cmd = cmd
+	th := &TrackerHeader{}
+	th.PkgLen = int64(FDFS_GROUP_NAME_MAX_LEN + len(remoteFilename))
+	th.Cmd = cmd
 	th.sendHeader(conn)
 
 	// #query_fmt: |-group_name(16)-filename(file_name_len)-|
-	queryBuffer := make([]byte, th.pkgLen)
+	queryBuffer := make([]byte, th.PkgLen)
 	// 16 bit groupName
 	copy(queryBuffer[:16], groupName)
 	copy(queryBuffer[16:], remoteFilename)
@@ -142,9 +142,9 @@ func (this *TrackerClient) QueryStorage(groupName string, remoteFilename string,
 	}
 
 	th.recvHeader(conn)
-	if th.status != 0 {
-		logger.Warnf("recvHeader error [%d]", th.status)
-		return nil, Errno{int(th.status)}
+	if th.Status != 0 {
+		logger.Warnf("recvHeader error [%d]", th.Status)
+		return nil, Errno{int(th.Status)}
 	}
 
 	var (
@@ -152,7 +152,7 @@ func (this *TrackerClient) QueryStorage(groupName string, remoteFilename string,
 		port           int64
 		storePathIndex uint8
 	)
-	recvBuff, _, err = TcpRecvResponse(conn, th.pkgLen)
+	recvBuff, _, err = TcpRecvResponse(conn, th.PkgLen)
 	if err != nil {
 		logger.Warnf("TcpRecvResponse error :%s", err.Error())
 		return nil, err
