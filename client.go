@@ -12,35 +12,22 @@ var (
 )
 
 type FdfsClient struct {
-	tracker     *Tracker
-	trackerPool *ConnectionPool
+	ConnPool *ConnectionPool
 	timeout     int
 }
 
-type Tracker struct {
-	HostList []string
-	Port     int
-}
 
 func init() {
 	logger.Formatter = new(logrus.TextFormatter)
 }
 
-func NewFdfsClientByTracker(tracker *Tracker) (*FdfsClient, error) {
-	trackerPool, err := NewConnectionPool(tracker.HostList, tracker.Port, 10, 150)
-	if err != nil {
-		return nil, err
-	}
-
-	return &FdfsClient{tracker: tracker, trackerPool: trackerPool}, nil
-}
 
 func (this *FdfsClient) UploadByFilename(filename string) (*UploadFileResponse, error) {
 	if _, err := os.Stat(filename); err != nil {
 		return nil, errors.New(err.Error() + "(uploading)")
 	}
 
-	tc := &TrackerClient{this.trackerPool}
+	tc := TrackerClient{this.ConnPool}
 	store, err := tc.QueryStorageStoreWithoutGroup()
 	if err != nil {
 		return nil, err
@@ -50,7 +37,7 @@ func (this *FdfsClient) UploadByFilename(filename string) (*UploadFileResponse, 
 }
 
 func (this *FdfsClient) UploadByBuffer(fileBuffer []byte, fileExtName string) (*UploadFileResponse, error) {
-	tc := &TrackerClient{this.trackerPool}
+	tc := TrackerClient{this.ConnPool}
 	store, err := tc.QueryStorageStoreWithoutGroup()
 	if err != nil {
 		return nil, err
@@ -71,7 +58,7 @@ func (this *FdfsClient) UploadSlaveByFilename(filename, remoteFileId, prefixName
 	groupName := tmp[0]
 	remoteFilename := tmp[1]
 
-	tc := &TrackerClient{this.trackerPool}
+	tc := TrackerClient{this.ConnPool}
 	store, err := tc.QueryStorageStoreWithGroup(groupName)
 	if err != nil {
 		return nil, err
@@ -88,7 +75,7 @@ func (this *FdfsClient) UploadSlaveByBuffer(fileBuffer []byte, remoteFileId, fil
 	groupName := tmp[0]
 	remoteFilename := tmp[1]
 
-	tc := &TrackerClient{this.trackerPool}
+	tc := TrackerClient{this.ConnPool}
 	store, err := tc.QueryStorageStoreWithGroup(groupName)
 	if err != nil {
 		return nil, err
@@ -102,7 +89,7 @@ func (this *FdfsClient) UploadAppenderByFilename(filename string) (*UploadFileRe
 		return nil, errors.New(err.Error() + "(uploading)")
 	}
 
-	tc := &TrackerClient{this.trackerPool}
+	tc := TrackerClient{this.ConnPool}
 	store, err := tc.QueryStorageStoreWithoutGroup()
 	if err != nil {
 		return nil, err
@@ -112,7 +99,7 @@ func (this *FdfsClient) UploadAppenderByFilename(filename string) (*UploadFileRe
 }
 
 func (this *FdfsClient) UploadAppenderByBuffer(fileBuffer []byte, fileExtName string) (*UploadFileResponse, error) {
-	tc := &TrackerClient{this.trackerPool}
+	tc := TrackerClient{this.ConnPool}
 	store, err := tc.QueryStorageStoreWithoutGroup()
 	if err != nil {
 		return nil, err
@@ -129,7 +116,7 @@ func (this *FdfsClient) DeleteFile(remoteFileId string) error {
 	groupName := tmp[0]
 	remoteFilename := tmp[1]
 
-	tc := &TrackerClient{this.trackerPool}
+	tc := TrackerClient{this.ConnPool}
 	store, err := tc.QueryStorageUpdate(groupName, remoteFilename)
 	if err != nil {
 		return err
@@ -146,7 +133,7 @@ func (this *FdfsClient) DownloadToFile(localFilename string, remoteFileId string
 	groupName := tmp[0]
 	remoteFilename := tmp[1]
 
-	tc := &TrackerClient{this.trackerPool}
+	tc := TrackerClient{this.ConnPool}
 	store, err := tc.QueryStorageFetch(groupName, remoteFilename)
 	if err != nil {
 		return nil, err
@@ -163,7 +150,7 @@ func (this *FdfsClient) DownloadToBuffer(remoteFileId string, offset int64, down
 	groupName := tmp[0]
 	remoteFilename := tmp[1]
 
-	tc := &TrackerClient{this.trackerPool}
+	tc := TrackerClient{this.ConnPool}
 	store, err := tc.QueryStorageFetch(groupName, remoteFilename)
 	if err != nil {
 		return nil, err

@@ -13,12 +13,12 @@ import (
 
 var ErrClosed = errors.New("pool is closed")
 
-type pConn struct {
+type PoolConn struct {
 	net.Conn
 	pool *ConnectionPool
 }
 
-func (c pConn) Close() error {
+func (c PoolConn) Close() error {
 	return c.pool.put(c.Conn)
 }
 
@@ -133,9 +133,9 @@ func (this *ConnectionPool) put(conn net.Conn) error {
 }
 
 func (this *ConnectionPool) wrapConn(conn net.Conn) net.Conn {
-	c := pConn{pool: this}
+	c := PoolConn{pool: this}
 	c.Conn = conn
-	return c
+	return &c
 }
 
 func (this *ConnectionPool) activeConn(conn net.Conn) error {
