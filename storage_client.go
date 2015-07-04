@@ -128,7 +128,7 @@ func (this *StorageClient) storageUploadFile(tc *TrackerClient,
 		logger.Warnf("uploadFileRequest.marshal error :%s", err.Error())
 		return nil, err
 	}
-	TcpSendData(conn, reqBuf)
+	conn.Write(reqBuf)
 
 	switch uploadType {
 	case FDFS_UPLOAD_BY_FILENAME:
@@ -137,7 +137,7 @@ func (this *StorageClient) storageUploadFile(tc *TrackerClient,
 		}
 	case FDFS_DOWNLOAD_TO_BUFFER:
 		if fileBuffer, ok := fileContent.([]byte); ok {
-			err = TcpSendData(conn, fileBuffer)
+			_, err =  conn.Write(fileBuffer)
 		}
 	}
 	if err != nil {
@@ -194,7 +194,7 @@ func (this *StorageClient) storageDeleteFile(tc *TrackerClient, storeServ *Stora
 		logger.Warnf("deleteFileRequest.marshal error :%s", err.Error())
 		return err
 	}
-	TcpSendData(conn, reqBuf)
+	conn.Write(reqBuf)
 
 	th.recvHeader(conn)
 	if th.status != 0 {
@@ -249,7 +249,7 @@ func (this *StorageClient) storageDownloadFile(tc *TrackerClient,
 		logger.Warnf("downloadFileRequest.marshal error :%s", err.Error())
 		return nil, err
 	}
-	TcpSendData(conn, reqBuf)
+	conn.Write(reqBuf)
 
 	th.recvHeader(conn)
 	if th.status != 0 {

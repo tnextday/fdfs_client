@@ -80,9 +80,8 @@ func (this *TrackerClient) trackerQueryStorageStorWithGroup(groupName string) (*
 			groupBuffer.WriteByte(groupNameBytes[i])
 		}
 	}
-	groupBytes := groupBuffer.Bytes()
 
-	err = TcpSendData(conn, groupBytes)
+	_, err = conn.Write(groupBuffer.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +153,7 @@ func (this *TrackerClient) trackerQueryStorage(groupName string, remoteFilename 
 	for i := 0; i < len(remoteFilenameBytes); i++ {
 		queryBuffer.WriteByte(remoteFilenameBytes[i])
 	}
-	err = TcpSendData(conn, queryBuffer.Bytes())
+	_, err = conn.Write(queryBuffer.Bytes())
 	if err != nil {
 		return nil, err
 	}
