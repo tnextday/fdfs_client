@@ -70,18 +70,11 @@ func (this *TrackerClient) trackerQueryStorageStorWithGroup(groupName string) (*
 	th.pkgLen = int64(FDFS_GROUP_NAME_MAX_LEN)
 	th.sendHeader(conn)
 
-	groupBuffer := new(bytes.Buffer)
+	groupBuffer := make([]byte, 16)
 	// 16 bit groupName
-	groupNameBytes := bytes.NewBufferString(groupName).Bytes()
-	for i := 0; i < 16; i++ {
-		if i >= len(groupNameBytes) {
-			groupBuffer.WriteByte(byte(0))
-		} else {
-			groupBuffer.WriteByte(groupNameBytes[i])
-		}
-	}
+	copy(groupBuffer, groupName)
 
-	_, err = conn.Write(groupBuffer.Bytes())
+	_, err = conn.Write(groupBuffer)
 	if err != nil {
 		return nil, err
 	}
@@ -138,22 +131,12 @@ func (this *TrackerClient) trackerQueryStorage(groupName string, remoteFilename 
 	th.sendHeader(conn)
 
 	// #query_fmt: |-group_name(16)-filename(file_name_len)-|
-	queryBuffer := new(bytes.Buffer)
+	queryBuffer := make([]byte, th.pkgLen)
 	// 16 bit groupName
-	groupNameBytes := bytes.NewBufferString(groupName).Bytes()
-	for i := 0; i < 16; i++ {
-		if i >= len(groupNameBytes) {
-			queryBuffer.WriteByte(byte(0))
-		} else {
-			queryBuffer.WriteByte(groupNameBytes[i])
-		}
-	}
-	// remoteFilenameLen bit remoteFilename
-	remoteFilenameBytes := bytes.NewBufferString(remoteFilename).Bytes()
-	for i := 0; i < len(remoteFilenameBytes); i++ {
-		queryBuffer.WriteByte(remoteFilenameBytes[i])
-	}
-	_, err = conn.Write(queryBuffer.Bytes())
+	copy(queryBuffer[:16], groupName)
+	copy(queryBuffer[16:], remoteFilename)
+
+	_, err = conn.Write(queryBuffer)
 	if err != nil {
 		return nil, err
 	}

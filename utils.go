@@ -32,11 +32,20 @@ func readCstr(buff io.Reader, length int) (string, error) {
 
 	for i, v := range str {
 		if v == 0 {
-			str = str[0:i]
+			str = str[:i]
 			break
 		}
 	}
 	return string(str), nil
+}
+
+func TrimCStr(cstr []byte) string {
+	for i, v := range cstr {
+		if v == 0 {
+			return string(cstr[:i])
+		}
+	}
+	return string(cstr)
 }
 
 
