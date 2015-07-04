@@ -23,8 +23,9 @@ func (this *TrackerClient) QueryStorageStoreWithoutGroup() (*StorageClient, erro
 	}
 	defer conn.Close()
 
-	th := &TrackerHeader{}
-	th.Cmd = TRACKER_PROTO_CMD_SERVICE_QUERY_STORE_WITHOUT_GROUP_ONE
+	th := TrackerHeader{
+		Cmd:TRACKER_PROTO_CMD_SERVICE_QUERY_STORE_WITHOUT_GROUP_ONE,
+	}
 	th.sendHeader(conn)
 
 	th.recvHeader(conn)
@@ -65,9 +66,10 @@ func (this *TrackerClient) QueryStorageStoreWithGroup(groupName string) (*Storag
 		return nil, err
 	}
 
-	th := &TrackerHeader{}
-	th.Cmd = TRACKER_PROTO_CMD_SERVICE_QUERY_STORE_WITH_GROUP_ONE
-	th.PkgLen = int64(FDFS_GROUP_NAME_MAX_LEN)
+	th := TrackerHeader{
+		Cmd:TRACKER_PROTO_CMD_SERVICE_QUERY_STORE_WITH_GROUP_ONE,
+		PkgLen:int64(FDFS_GROUP_NAME_MAX_LEN),
+	}
 	th.sendHeader(conn)
 
 	groupBuffer := make([]byte, 16)
@@ -125,7 +127,7 @@ func (this *TrackerClient) QueryStorage(groupName string, remoteFilename string,
 		return nil, err
 	}
 
-	th := &TrackerHeader{}
+	th := TrackerHeader{}
 	th.PkgLen = int64(FDFS_GROUP_NAME_MAX_LEN + len(remoteFilename))
 	th.Cmd = cmd
 	th.sendHeader(conn)

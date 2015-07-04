@@ -18,7 +18,7 @@ type PoolConn struct {
 	pool *ConnectionPool
 }
 
-func (c PoolConn) Close() error {
+func (c *PoolConn) Close() error {
 	return c.pool.put(c.Conn)
 }
 
