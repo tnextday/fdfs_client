@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path"
 )
 
 type StorageClient struct {
@@ -19,7 +20,7 @@ func (this *StorageClient) storageUploadByFilename(tc *TrackerClient,
 	}
 
 	fileSize := fileInfo.Size()
-	fileExtName := getFileExt(filename)
+	fileExtName := path.Ext(filename)
 
 	return this.storageUploadFile(tc, storeServ, filename, int64(fileSize), FDFS_UPLOAD_BY_FILENAME,
 		STORAGE_PROTO_CMD_UPLOAD_FILE, "", "", fileExtName)
@@ -41,7 +42,7 @@ func (this *StorageClient) storageUploadSlaveByFilename(tc *TrackerClient,
 	}
 
 	fileSize := fileInfo.Size()
-	fileExtName := getFileExt(filename)
+	fileExtName := path.Ext(filename)
 
 	return this.storageUploadFile(tc, storeServ, filename, int64(fileSize), FDFS_UPLOAD_BY_FILENAME,
 		STORAGE_PROTO_CMD_UPLOAD_SLAVE_FILE, remoteFileId, prefixName, fileExtName)
@@ -63,7 +64,7 @@ func (this *StorageClient) storageUploadAppenderByFilename(tc *TrackerClient,
 	}
 
 	fileSize := fileInfo.Size()
-	fileExtName := getFileExt(filename)
+	fileExtName := path.Ext(filename)
 
 	return this.storageUploadFile(tc, storeServ, filename, int64(fileSize), FDFS_UPLOAD_BY_FILENAME,
 		STORAGE_PROTO_CMD_UPLOAD_APPENDER_FILE, "", "", fileExtName)

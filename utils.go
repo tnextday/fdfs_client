@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 )
 
@@ -23,12 +22,6 @@ func (e Errno) Error() string {
 	return errmsg
 }
 
-func fdfsCheckFile(filename string) error {
-	if _, err := os.Stat(filename); err != nil {
-		return err
-	}
-	return nil
-}
 
 func readCstr(buff io.Reader, length int) (string, error) {
 	str := make([]byte, length)
@@ -45,13 +38,7 @@ func readCstr(buff io.Reader, length int) (string, error) {
 	}
 	return string(str), nil
 }
-func getFileExt(filename string) string {
-	parts := strings.Split(filename, ".")
-	if len(parts) >= 2 {
-		return parts[len(parts)-1]
-	}
-	return ""
-}
+
 
 func splitRemoteFileId(remoteFileId string) ([]string, error) {
 	parts := strings.SplitN(remoteFileId, "/", 2)

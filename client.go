@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Sirupsen/logrus"
+	"os"
 )
 
 var (
@@ -75,7 +76,7 @@ func ColseFdfsClient() {
 }
 
 func (this *FdfsClient) UploadByFilename(filename string) (*UploadFileResponse, error) {
-	if err := fdfsCheckFile(filename); err != nil {
+	if _, err := os.Stat(filename); err != nil {
 		return nil, errors.New(err.Error() + "(uploading)")
 	}
 
@@ -105,7 +106,7 @@ func (this *FdfsClient) UploadByBuffer(filebuffer []byte, fileExtName string) (*
 }
 
 func (this *FdfsClient) UploadSlaveByFilename(filename, remoteFileId, prefixName string) (*UploadFileResponse, error) {
-	if err := fdfsCheckFile(filename); err != nil {
+	if _, err := os.Stat(filename); err != nil {
 		return nil, errors.New(err.Error() + "(uploading)")
 	}
 
@@ -149,7 +150,7 @@ func (this *FdfsClient) UploadSlaveByBuffer(filebuffer []byte, remoteFileId, fil
 }
 
 func (this *FdfsClient) UploadAppenderByFilename(filename string) (*UploadFileResponse, error) {
-	if err := fdfsCheckFile(filename); err != nil {
+	if _, err := os.Stat(filename); err != nil {
 		return nil, errors.New(err.Error() + "(uploading)")
 	}
 
