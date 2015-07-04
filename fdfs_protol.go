@@ -155,13 +155,6 @@ type RequestResponse interface {
 	Response
 }
 
-type StorageServer struct {
-	IpAddr         string
-	Port           int
-	GroupName      string
-	StorePathIndex int
-}
-
 type trackerHeader struct {
 	pkgLen int64
 	cmd    int8
@@ -202,9 +195,6 @@ func (this *trackerHeader) recvHeader(conn net.Conn) {
 	}
 
 	err = this.unmarshal(buf)
-	if err != nil {
-		return
-	}
 }
 
 type uploadFileRequest struct {

@@ -6,14 +6,17 @@ import (
 	"net"
 	"os"
 	"path"
+	"time"
 )
 
 type StorageClient struct {
-	pool *ConnectionPool
+	IpAddr string
+	Port int
+	GroupName      string
+	StorePathIndex int
 }
 
-func (this *StorageClient) storageUploadByFilename(tc *TrackerClient,
-	storeServ *StorageServer, filename string) (*UploadFileResponse, error) {
+func (this *StorageClient) UploadByFilename(filename string) (*UploadFileResponse, error) {
 	fileInfo, err := os.Stat(filename)
 	if err != nil {
 		return nil, err
@@ -22,20 +25,18 @@ func (this *StorageClient) storageUploadByFilename(tc *TrackerClient,
 	fileSize := fileInfo.Size()
 	fileExtName := path.Ext(filename)
 
-	return this.storageUploadFile(tc, storeServ, filename, int64(fileSize), FDFS_UPLOAD_BY_FILENAME,
+	return this.UploadFile(filename, int64(fileSize), FDFS_UPLOAD_BY_FILENAME,
 		STORAGE_PROTO_CMD_UPLOAD_FILE, "", "", fileExtName)
 }
 
-func (this *StorageClient) storageUploadByBuffer(tc *TrackerClient,
-	storeServ *StorageServer, fileBuffer []byte, fileExtName string) (*UploadFileResponse, error) {
+func (this *StorageClient) UploadByBuffer(fileBuffer []byte, fileExtName string) (*UploadFileResponse, error) {
 	bufferSize := len(fileBuffer)
 
-	return this.storageUploadFile(tc, storeServ, fileBuffer, int64(bufferSize), FDFS_UPLOAD_BY_BUFFER,
+	return this.UploadFile(fileBuffer, int64(bufferSize), FDFS_UPLOAD_BY_BUFFER,
 		STORAGE_PROTO_CMD_UPLOAD_FILE, "", "", fileExtName)
 }
 
-func (this *StorageClient) storageUploadSlaveByFilename(tc *TrackerClient,
-	storeServ *StorageServer, filename string, prefixName string, remoteFileId string) (*UploadFileResponse, error) {
+func (this *StorageClient) UploadSlaveByFilename(filename string, prefixName string, remoteFileId string) (*UploadFileResponse, error) {
 	fileInfo, err := os.Stat(filename)
 	if err != nil {
 		return nil, err
@@ -44,20 +45,18 @@ func (this *StorageClient) storageUploadSlaveByFilename(tc *TrackerClient,
 	fileSize := fileInfo.Size()
 	fileExtName := path.Ext(filename)
 
-	return this.storageUploadFile(tc, storeServ, filename, int64(fileSize), FDFS_UPLOAD_BY_FILENAME,
+	return this.UploadFile(filename, int64(fileSize), FDFS_UPLOAD_BY_FILENAME,
 		STORAGE_PROTO_CMD_UPLOAD_SLAVE_FILE, remoteFileId, prefixName, fileExtName)
 }
 
-func (this *StorageClient) storageUploadSlaveByBuffer(tc *TrackerClient,
-	storeServ *StorageServer, fileBuffer []byte, remoteFileId string, fileExtName string) (*UploadFileResponse, error) {
+func (this *StorageClient) UploadSlaveByBuffer(fileBuffer []byte, remoteFileId string, fileExtName string) (*UploadFileResponse, error) {
 	bufferSize := len(fileBuffer)
 
-	return this.storageUploadFile(tc, storeServ, fileBuffer, int64(bufferSize), FDFS_UPLOAD_BY_BUFFER,
+	return this.UploadFile(fileBuffer, int64(bufferSize), FDFS_UPLOAD_BY_BUFFER,
 		STORAGE_PROTO_CMD_UPLOAD_SLAVE_FILE, "", remoteFileId, fileExtName)
 }
 
-func (this *StorageClient) storageUploadAppenderByFilename(tc *TrackerClient,
-	storeServ *StorageServer, filename string) (*UploadFileResponse, error) {
+func (this *StorageClient) UploadAppenderByFilename(filename string) (*UploadFileResponse, error) {
 	fileInfo, err := os.Stat(filename)
 	if err != nil {
 		return nil, err
@@ -66,20 +65,18 @@ func (this *StorageClient) storageUploadAppenderByFilename(tc *TrackerClient,
 	fileSize := fileInfo.Size()
 	fileExtName := path.Ext(filename)
 
-	return this.storageUploadFile(tc, storeServ, filename, int64(fileSize), FDFS_UPLOAD_BY_FILENAME,
+	return this.UploadFile(filename, int64(fileSize), FDFS_UPLOAD_BY_FILENAME,
 		STORAGE_PROTO_CMD_UPLOAD_APPENDER_FILE, "", "", fileExtName)
 }
 
-func (this *StorageClient) storageUploadAppenderByBuffer(tc *TrackerClient,
-	storeServ *StorageServer, fileBuffer []byte, fileExtName string) (*UploadFileResponse, error) {
+func (this *StorageClient) UploadAppenderByBuffer(fileBuffer []byte, fileExtName string) (*UploadFileResponse, error) {
 	bufferSize := len(fileBuffer)
 
-	return this.storageUploadFile(tc, storeServ, fileBuffer, int64(bufferSize), FDFS_UPLOAD_BY_BUFFER,
+	return this.UploadFile(fileBuffer, int64(bufferSize), FDFS_UPLOAD_BY_BUFFER,
 		STORAGE_PROTO_CMD_UPLOAD_APPENDER_FILE, "", "", fileExtName)
 }
 
-func (this *StorageClient) storageUploadFile(tc *TrackerClient,
-	storeServ *StorageServer, fileContent interface{}, fileSize int64, uploadType int,
+func (this *StorageClient) UploadFile(fileContent interface{}, fileSize int64, uploadType int,
 	cmd int8, masterFilename string, prefixName string, fileExtName string) (*UploadFileResponse, error) {
 
 	var (
@@ -90,14 +87,14 @@ func (this *StorageClient) storageUploadFile(tc *TrackerClient,
 		err         error
 	)
 
-	conn, err = this.pool.Get()
+	conn, err = this.makeConn()
 	defer conn.Close()
 	if err != nil {
 		return nil, err
 	}
 
 	masterFilenameLen := int64(len(masterFilename))
-	if len(storeServ.GroupName) > 0 && len(masterFilename) > 0 {
+	if len(this.GroupName) > 0 && len(masterFilename) > 0 {
 		uploadSlave = true
 		// #slave_fmt |-master_len(8)-file_size(8)-prefix_name(16)-file_ext_name(6)
 		//       #           -master_name(master_filename_len)-|
@@ -120,7 +117,7 @@ func (this *StorageClient) storageUploadFile(tc *TrackerClient,
 		reqBuf, err = req.marshal()
 	} else {
 		req := &uploadFileRequest{}
-		req.storePathIndex = uint8(storeServ.StorePathIndex)
+		req.storePathIndex = uint8(this.StorePathIndex)
 		req.fileSize = int64(fileSize)
 		req.fileExtName = fileExtName
 		reqBuf, err = req.marshal()
@@ -168,14 +165,13 @@ func (this *StorageClient) storageUploadFile(tc *TrackerClient,
 	return ur, nil
 }
 
-func (this *StorageClient) storageDeleteFile(tc *TrackerClient, storeServ *StorageServer, remoteFilename string) error {
+func (this *StorageClient) DeleteFile(remoteFilename string) error {
 	var (
 		conn   net.Conn
 		reqBuf []byte
 		err    error
 	)
-
-	conn, err = this.pool.Get()
+	conn, err = this.makeConn()
 	defer conn.Close()
 	if err != nil {
 		return err
@@ -188,7 +184,7 @@ func (this *StorageClient) storageDeleteFile(tc *TrackerClient, storeServ *Stora
 	th.sendHeader(conn)
 
 	req := &deleteFileRequest{}
-	req.groupName = storeServ.GroupName
+	req.groupName = this.GroupName
 	req.remoteFilename = remoteFilename
 	reqBuf, err = req.marshal()
 	if err != nil {
@@ -204,20 +200,17 @@ func (this *StorageClient) storageDeleteFile(tc *TrackerClient, storeServ *Stora
 	return nil
 }
 
-func (this *StorageClient) storageDownloadToFile(tc *TrackerClient,
-	storeServ *StorageServer, localFilename string, offset int64,
+func (this *StorageClient) DownloadToFile(localFilename string, offset int64,
 	downloadSize int64, remoteFilename string) (*DownloadFileResponse, error) {
-	return this.storageDownloadFile(tc, storeServ, localFilename, offset, downloadSize, FDFS_DOWNLOAD_TO_FILE, remoteFilename)
+	return this.DownloadFile(localFilename, offset, downloadSize, FDFS_DOWNLOAD_TO_FILE, remoteFilename)
 }
 
-func (this *StorageClient) storageDownloadToBuffer(tc *TrackerClient,
-	storeServ *StorageServer, fileBuffer []byte, offset int64,
+func (this *StorageClient) DownloadToBuffer(fileBuffer []byte, offset int64,
 	downloadSize int64, remoteFilename string) (*DownloadFileResponse, error) {
-	return this.storageDownloadFile(tc, storeServ, fileBuffer, offset, downloadSize, FDFS_DOWNLOAD_TO_BUFFER, remoteFilename)
+	return this.DownloadFile(fileBuffer, offset, downloadSize, FDFS_DOWNLOAD_TO_BUFFER, remoteFilename)
 }
 
-func (this *StorageClient) storageDownloadFile(tc *TrackerClient,
-	storeServ *StorageServer, fileContent interface{}, offset int64, downloadSize int64,
+func (this *StorageClient) DownloadFile(fileContent interface{}, offset int64, downloadSize int64,
 	downloadType int, remoteFilename string) (*DownloadFileResponse, error) {
 
 	var (
@@ -229,7 +222,7 @@ func (this *StorageClient) storageDownloadFile(tc *TrackerClient,
 		err           error
 	)
 
-	conn, err = this.pool.Get()
+	conn, err = this.makeConn()
 	defer conn.Close()
 	if err != nil {
 		return nil, err
@@ -243,7 +236,7 @@ func (this *StorageClient) storageDownloadFile(tc *TrackerClient,
 	req := &downloadFileRequest{}
 	req.offset = offset
 	req.downloadSize = downloadSize
-	req.groupName = storeServ.GroupName
+	req.groupName = this.GroupName
 	req.remoteFilename = remoteFilename
 	reqBuf, err = req.marshal()
 	if err != nil {
@@ -279,7 +272,7 @@ func (this *StorageClient) storageDownloadFile(tc *TrackerClient,
 	}
 
 	dr := &DownloadFileResponse{}
-	dr.RemoteFileId = storeServ.GroupName + string(os.PathSeparator) + remoteFilename
+	dr.RemoteFileId = this.GroupName + "/" + remoteFilename
 	if downloadType == FDFS_DOWNLOAD_TO_FILE {
 		dr.Content = localFilename
 	} else {
@@ -287,4 +280,10 @@ func (this *StorageClient) storageDownloadFile(tc *TrackerClient,
 	}
 	dr.DownloadSize = recvSize
 	return dr, nil
+}
+
+
+func (this *StorageClient) makeConn() (net.Conn, error) {
+	addr := fmt.Sprintf("%s:%d", this.IpAddr, this.Port)
+	return net.DialTimeout("tcp", addr, time.Minute)
 }

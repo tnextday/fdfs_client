@@ -10,7 +10,7 @@ type TrackerClient struct {
 	Pool *ConnectionPool
 }
 
-func (this *TrackerClient) trackerQueryStorageStorWithoutGroup() (*StorageServer, error) {
+func (this *TrackerClient) QueryStorageStoreWithoutGroup() (*StorageClient, error) {
 	var (
 		conn     net.Conn
 		recvBuff []byte
@@ -49,10 +49,10 @@ func (this *TrackerClient) trackerQueryStorageStorWithoutGroup() (*StorageServer
 	ipAddr, err = readCstr(buff, IP_ADDRESS_SIZE-1)
 	binary.Read(buff, binary.BigEndian, &port)
 	binary.Read(buff, binary.BigEndian, &storePathIndex)
-	return &StorageServer{ipAddr, int(port), groupName, int(storePathIndex)}, nil
+	return &StorageClient{ipAddr, int(port), groupName, int(storePathIndex)}, nil
 }
 
-func (this *TrackerClient) trackerQueryStorageStorWithGroup(groupName string) (*StorageServer, error) {
+func (this *TrackerClient) QueryStorageStoreWithGroup(groupName string) (*StorageClient, error) {
 	var (
 		conn     net.Conn
 		recvBuff []byte
@@ -101,18 +101,18 @@ func (this *TrackerClient) trackerQueryStorageStorWithGroup(groupName string) (*
 	ipAddr, err = readCstr(buff, IP_ADDRESS_SIZE-1)
 	binary.Read(buff, binary.BigEndian, &port)
 	binary.Read(buff, binary.BigEndian, &storePathIndex)
-	return &StorageServer{ipAddr, int(port), groupName, int(storePathIndex)}, nil
+	return &StorageClient{ipAddr, int(port), groupName, int(storePathIndex)}, nil
 }
 
-func (this *TrackerClient) trackerQueryStorageUpdate(groupName string, remoteFilename string) (*StorageServer, error) {
-	return this.trackerQueryStorage(groupName, remoteFilename, TRACKER_PROTO_CMD_SERVICE_QUERY_UPDATE)
+func (this *TrackerClient) QueryStorageUpdate(groupName string, remoteFilename string) (*StorageClient, error) {
+	return this.QueryStorage(groupName, remoteFilename, TRACKER_PROTO_CMD_SERVICE_QUERY_UPDATE)
 }
 
-func (this *TrackerClient) TrackerQueryStorageFetch(groupName string, remoteFilename string) (*StorageServer, error) {
-	return this.trackerQueryStorage(groupName, remoteFilename, TRACKER_PROTO_CMD_SERVICE_QUERY_FETCH_ONE)
+func (this *TrackerClient) QueryStorageFetch(groupName string, remoteFilename string) (*StorageClient, error) {
+	return this.QueryStorage(groupName, remoteFilename, TRACKER_PROTO_CMD_SERVICE_QUERY_FETCH_ONE)
 }
 
-func (this *TrackerClient) trackerQueryStorage(groupName string, remoteFilename string, cmd int8) (*StorageServer, error) {
+func (this *TrackerClient) QueryStorage(groupName string, remoteFilename string, cmd int8) (*StorageClient, error) {
 	var (
 		conn     net.Conn
 		recvBuff []byte
@@ -163,5 +163,5 @@ func (this *TrackerClient) trackerQueryStorage(groupName string, remoteFilename 
 	ipAddr, err = readCstr(buff, IP_ADDRESS_SIZE-1)
 	binary.Read(buff, binary.BigEndian, &port)
 	binary.Read(buff, binary.BigEndian, &storePathIndex)
-	return &StorageServer{ipAddr, int(port), groupName, int(storePathIndex)}, nil
+	return &StorageClient{ipAddr, int(port), groupName, int(storePathIndex)}, nil
 }
