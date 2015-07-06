@@ -4,20 +4,13 @@ import (
 	"errors"
 	"os"
 
-	"github.com/Sirupsen/logrus"
+	"io"
 )
 
-var (
-	logger = logrus.New()
-)
 
 type FdfsClient struct {
 	ConnPool *ConnectionPool
-	timeout  int
-}
-
-func init() {
-	logger.Formatter = new(logrus.TextFormatter)
+//	timeout  int
 }
 
 func (this *FdfsClient) UploadByFilename(filename string) (*UploadFileResponse, error) {
@@ -111,11 +104,10 @@ func (this *FdfsClient) DeleteFile(remoteFileId string) error {
 	if err != nil || len(tmp) != 2 {
 		return err
 	}
-	groupName := tmp[0]
 	remoteFilename := tmp[1]
 
 	tc := TrackerClient{this.ConnPool}
-	store, err := tc.QueryStorageUpdate(groupName, remoteFilename)
+	store, err := tc.QueryStorageUpdate(remoteFileId)
 	if err != nil {
 		return err
 	}
@@ -123,36 +115,20 @@ func (this *FdfsClient) DeleteFile(remoteFileId string) error {
 	return store.DeleteFile(remoteFilename)
 }
 
-func (this *FdfsClient) DownloadToFile(localFilename string, remoteFileId string, offset int64, downloadSize int64) (*DownloadFileResponse, error) {
-	tmp, err := splitRemoteFileId(remoteFileId)
-	if err != nil || len(tmp) != 2 {
-		return nil, err
-	}
-	groupName := tmp[0]
-	remoteFilename := tmp[1]
-
-	tc := TrackerClient{this.ConnPool}
-	store, err := tc.QueryStorageFetch(groupName, remoteFilename)
+func (this *FdfsClient) DownloadToFile(remoteFileId string, localFilename string) (size int64, e error) {
+	file, err := os.Create(localFilename)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-
-	return store.DownloadToFile(localFilename, offset, downloadSize, remoteFilename)
+	defer file.Close()
+	return this.DownloadEx(remoteFileId, file, 0, 0);
 }
 
-func (this *FdfsClient) DownloadToBuffer(remoteFileId string, offset int64, downloadSize int64) (*DownloadFileResponse, error) {
-	tmp, err := splitRemoteFileId(remoteFileId)
-	if err != nil || len(tmp) != 2 {
-		return nil, err
-	}
-	groupName := tmp[0]
-	remoteFilename := tmp[1]
-
+func (this *FdfsClient) DownloadEx(remoteFileId string, output io.Writer, offset int64, downloadSize int64) (size int64, e error) {
 	tc := TrackerClient{this.ConnPool}
-	store, err := tc.QueryStorageFetch(groupName, remoteFilename)
+	store, err := tc.QueryStorageFetch(remoteFileId)
 	if err != nil {
 		return nil, err
 	}
-	var fileBuffer []byte
-	return store.DownloadToBuffer(fileBuffer, offset, downloadSize, remoteFilename)
+	return store.DownloadEx(remoteFileId, output, offset, downloadSize)
 }

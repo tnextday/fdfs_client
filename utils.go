@@ -49,7 +49,7 @@ func TrimCStr(cstr []byte) string {
 
 func splitRemoteFileId(remoteFileId string) ([]string, error) {
 	parts := strings.SplitN(remoteFileId, "/", 2)
-	if len(parts) < 2 {
+	if len(parts) != 2 {
 		return nil, errors.New("error remoteFileId")
 	}
 	return parts, nil

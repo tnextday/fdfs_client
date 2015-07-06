@@ -7,7 +7,6 @@ import (
 	"io"
 	"math/rand"
 	"net"
-	"os"
 	"time"
 )
 
@@ -71,8 +70,7 @@ func (this *ConnectionPool) Get() (net.Conn, error) {
 			return this.wrapConn(conn), nil
 		default:
 			if this.Len() >= this.maxConns {
-				errmsg := fmt.Sprintf("Too many connctions %d", this.Len())
-				return nil, errors.New(errmsg)
+				return nil, fmt.Errorf("Too many connctions %d", this.Len())
 			}
 			conn, err := this.makeConn()
 			if err != nil {

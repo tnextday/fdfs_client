@@ -101,7 +101,7 @@ func TestDownloadToFile(t *testing.T) {
 		downloadResponse *DownloadFileResponse
 		localFilename    string = "download.txt"
 	)
-	downloadResponse, err = fdfsClient.DownloadToFile(localFilename, uploadResponse.RemoteFileId, 0, 0)
+	downloadResponse, err = fdfsClient.DownloadToFile(uploadResponse.RemoteFileId, localFilename, 0, 0)
 	if err != nil {
 		t.Errorf("DownloadToFile error %s", err.Error())
 	}
@@ -193,7 +193,7 @@ func BenchmarkDownloadToFile(b *testing.B) {
 		var (
 			localFilename string = "download.txt"
 		)
-		_, err = fdfsClient.DownloadToFile(localFilename, uploadResponse.RemoteFileId, 0, 0)
+		_, err = fdfsClient.DownloadToFile(uploadResponse.RemoteFileId, localFilename, 0, 0)
 		if err != nil {
 			fmt.Errorf("DownloadToFile error %s", err.Error())
 		}

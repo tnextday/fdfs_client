@@ -41,7 +41,6 @@ func (this *TrackerClient) QueryStorageStoreWithoutGroup() (*StorageClient, erro
 	)
 	recvBuff, _, err = TcpRecvResponse(conn, th.PkgLen)
 	if err != nil {
-		logger.Warnf("TcpRecvResponse error :%s", err.Error())
 		return nil, err
 	}
 	buff := bytes.NewBuffer(recvBuff)
@@ -83,7 +82,6 @@ func (this *TrackerClient) QueryStorageStoreWithGroup(groupName string) (*Storag
 
 	th.recvHeader(conn)
 	if th.Status != 0 {
-		logger.Warnf("recvHeader error [%d]", th.Status)
 		return nil, Errno{int(th.Status)}
 	}
 
@@ -94,7 +92,6 @@ func (this *TrackerClient) QueryStorageStoreWithGroup(groupName string) (*Storag
 	)
 	recvBuff, _, err = TcpRecvResponse(conn, th.PkgLen)
 	if err != nil {
-		logger.Warnf("TcpRecvResponse error :%s", err.Error())
 		return nil, err
 	}
 	buff := bytes.NewBuffer(recvBuff)
@@ -106,20 +103,26 @@ func (this *TrackerClient) QueryStorageStoreWithGroup(groupName string) (*Storag
 	return &StorageClient{ipAddr, int(port), groupName, int(storePathIndex)}, nil
 }
 
-func (this *TrackerClient) QueryStorageUpdate(groupName string, remoteFilename string) (*StorageClient, error) {
-	return this.QueryStorage(groupName, remoteFilename, TRACKER_PROTO_CMD_SERVICE_QUERY_UPDATE)
+func (this *TrackerClient) QueryStorageUpdate(remoteFileId string) (*StorageClient, error) {
+	return this.QueryStorage(remoteFileId, TRACKER_PROTO_CMD_SERVICE_QUERY_UPDATE)
 }
 
-func (this *TrackerClient) QueryStorageFetch(groupName string, remoteFilename string) (*StorageClient, error) {
-	return this.QueryStorage(groupName, remoteFilename, TRACKER_PROTO_CMD_SERVICE_QUERY_FETCH_ONE)
+func (this *TrackerClient) QueryStorageFetch(remoteFileId string) (*StorageClient, error) {
+	return this.QueryStorage(remoteFileId, TRACKER_PROTO_CMD_SERVICE_QUERY_FETCH_ONE)
 }
 
-func (this *TrackerClient) QueryStorage(groupName string, remoteFilename string, cmd int8) (*StorageClient, error) {
+func (this *TrackerClient) QueryStorage(remoteFileId string, cmd int8) (*StorageClient, error) {
 	var (
 		conn     net.Conn
 		recvBuff []byte
 		err      error
 	)
+	tmp, err := splitRemoteFileId(remoteFileId)
+	if err != nil {
+		return nil, err
+	}
+	groupName := tmp[0]
+	remoteFilename := tmp[1]
 
 	conn, err = this.Pool.Get()
 	defer conn.Close()
@@ -145,7 +148,6 @@ func (this *TrackerClient) QueryStorage(groupName string, remoteFilename string,
 
 	th.recvHeader(conn)
 	if th.Status != 0 {
-		logger.Warnf("recvHeader error [%d]", th.Status)
 		return nil, Errno{int(th.Status)}
 	}
 
@@ -156,7 +158,6 @@ func (this *TrackerClient) QueryStorage(groupName string, remoteFilename string,
 	)
 	recvBuff, _, err = TcpRecvResponse(conn, th.PkgLen)
 	if err != nil {
-		logger.Warnf("TcpRecvResponse error :%s", err.Error())
 		return nil, err
 	}
 	buff := bytes.NewBuffer(recvBuff)
