@@ -2,117 +2,123 @@ package fdfs_client
 
 import (
 	"errors"
-	"os"
-
 	"io"
+	"os"
 )
-
 
 type FdfsClient struct {
 	ConnPool *ConnectionPool
-//	timeout  int
+	//	timeout  int
 }
 
-func (this *FdfsClient) UploadByFilename(filename string) (*UploadFileResponse, error) {
+func (this *FdfsClient) UploadByFilename(filename string) (remoteFileId string, e error) {
 	if _, err := os.Stat(filename); err != nil {
-		return nil, errors.New(err.Error() + "(uploading)")
+		return "", errors.New(err.Error() + "(uploading)")
 	}
 
 	tc := TrackerClient{this.ConnPool}
 	store, err := tc.QueryStorageStoreWithoutGroup()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-
-	return store.UploadByFilename(filename)
+	fid, e := store.UploadByFilename(filename)
+	if e != nil {
+		return "", e
+	}
+	return fid.GetFileIdStr(), nil
 }
 
-func (this *FdfsClient) UploadByBuffer(fileBuffer []byte, fileExtName string) (*UploadFileResponse, error) {
+func (this *FdfsClient) UploadByBuffer(fileBuffer []byte, fileExtName string) (remoteFileId string, e error) {
 	tc := TrackerClient{this.ConnPool}
 	store, err := tc.QueryStorageStoreWithoutGroup()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-
-	return store.UploadByBuffer(fileBuffer, fileExtName)
+	fid, e := store.UploadByBuffer(fileBuffer, fileExtName)
+	if e != nil {
+		return "", e
+	}
+	return fid.GetFileIdStr(), nil
 }
 
-func (this *FdfsClient) UploadSlaveByFilename(filename, remoteFileId, prefixName string) (*UploadFileResponse, error) {
+func (this *FdfsClient) UploadSlaveByFilename(filename, masterFileId, prefixName string) (remoteFileId string, e error) {
 	if _, err := os.Stat(filename); err != nil {
-		return nil, errors.New(err.Error() + "(uploading)")
+		return "", errors.New(err.Error() + "(uploading)")
 	}
 
-	tmp, err := splitRemoteFileId(remoteFileId)
-	if err != nil || len(tmp) != 2 {
-		return nil, err
-	}
-	groupName := tmp[0]
-	remoteFilename := tmp[1]
-
-	tc := TrackerClient{this.ConnPool}
-	store, err := tc.QueryStorageStoreWithGroup(groupName)
+	masterFid, err := NewFileIdFromStr(masterFileId)
 	if err != nil {
-		return nil, err
-	}
-
-	return store.UploadSlaveByFilename(filename, prefixName, remoteFilename)
-}
-
-func (this *FdfsClient) UploadSlaveByBuffer(fileBuffer []byte, remoteFileId, fileExtName string) (*UploadFileResponse, error) {
-	tmp, err := splitRemoteFileId(remoteFileId)
-	if err != nil || len(tmp) != 2 {
-		return nil, err
-	}
-	groupName := tmp[0]
-	remoteFilename := tmp[1]
-
-	tc := TrackerClient{this.ConnPool}
-	store, err := tc.QueryStorageStoreWithGroup(groupName)
-	if err != nil {
-		return nil, err
-	}
-
-	return store.UploadSlaveByBuffer(fileBuffer, remoteFilename, fileExtName)
-}
-
-func (this *FdfsClient) UploadAppenderByFilename(filename string) (*UploadFileResponse, error) {
-	if _, err := os.Stat(filename); err != nil {
-		return nil, errors.New(err.Error() + "(uploading)")
+		return "", err
 	}
 
 	tc := TrackerClient{this.ConnPool}
-	store, err := tc.QueryStorageStoreWithoutGroup()
+	store, err := tc.QueryStorageStoreWithGroup(masterFid.GroupName)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-
-	return store.UploadAppenderByFilename(filename)
+	fid, e := store.UploadSlaveByFilename(filename, prefixName, masterFid.FileName)
+	if e != nil {
+		return "", e
+	}
+	return fid.GetFileIdStr(), nil
 }
 
-func (this *FdfsClient) UploadAppenderByBuffer(fileBuffer []byte, fileExtName string) (*UploadFileResponse, error) {
+func (this *FdfsClient) UploadSlaveByBuffer(fileBuffer []byte, masterFileId, fileExtName string) (remoteFileId string, e error) {
+	masterFid, err := NewFileIdFromStr(masterFileId)
+	if err != nil {
+		return "", err
+	}
+
 	tc := TrackerClient{this.ConnPool}
-	store, err := tc.QueryStorageStoreWithoutGroup()
+	store, err := tc.QueryStorageStoreWithGroup(masterFid.GroupName)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return store.UploadAppenderByBuffer(fileBuffer, fileExtName)
+	fid, e := store.UploadSlaveByBuffer(fileBuffer, masterFid.FileName, fileExtName)
+	if e != nil {
+		return "", e
+	}
+	return fid.GetFileIdStr(), nil
 }
+
+//func (this *FdfsClient) UploadAppenderByFilename(filename string) (string, error) {
+//	if _, err := os.Stat(filename); err != nil {
+//		return nil, errors.New(err.Error() + "(uploading)")
+//	}
+//
+//	tc := TrackerClient{this.ConnPool}
+//	store, err := tc.QueryStorageStoreWithoutGroup()
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return store.UploadAppenderByFilename(filename)
+//}
+
+//func (this *FdfsClient) UploadAppenderByBuffer(fileBuffer []byte, fileExtName string) (*FileId, error) {
+//	tc := TrackerClient{this.ConnPool}
+//	store, err := tc.QueryStorageStoreWithoutGroup()
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return store.UploadAppenderByBuffer(fileBuffer, fileExtName)
+//}
 
 func (this *FdfsClient) DeleteFile(remoteFileId string) error {
-	tmp, err := splitRemoteFileId(remoteFileId)
-	if err != nil || len(tmp) != 2 {
-		return err
-	}
-	remoteFilename := tmp[1]
-
-	tc := TrackerClient{this.ConnPool}
-	store, err := tc.QueryStorageUpdate(remoteFileId)
+	fid, err := NewFileIdFromStr(remoteFileId)
 	if err != nil {
 		return err
 	}
 
-	return store.DeleteFile(remoteFilename)
+	tc := TrackerClient{this.ConnPool}
+	store, err := tc.QueryStorageUpdate(fid)
+	if err != nil {
+		return err
+	}
+
+	return store.DeleteFile(fid.FileName)
 }
 
 func (this *FdfsClient) DownloadToFile(remoteFileId string, localFilename string) (size int64, e error) {
@@ -121,14 +127,19 @@ func (this *FdfsClient) DownloadToFile(remoteFileId string, localFilename string
 		return 0, err
 	}
 	defer file.Close()
-	return this.DownloadEx(remoteFileId, file, 0, 0);
+	return this.DownloadEx(remoteFileId, file, 0, 0)
 }
 
 func (this *FdfsClient) DownloadEx(remoteFileId string, output io.Writer, offset int64, downloadSize int64) (size int64, e error) {
-	tc := TrackerClient{this.ConnPool}
-	store, err := tc.QueryStorageFetch(remoteFileId)
+	fid, err := NewFileIdFromStr(remoteFileId)
 	if err != nil {
 		return 0, err
 	}
-	return store.DownloadEx(remoteFileId, output, offset, downloadSize)
+	tc := TrackerClient{this.ConnPool}
+	store, err := tc.QueryStorageFetch(fid)
+	if err != nil {
+		return 0, err
+	}
+
+	return store.DownloadEx(fid.FileName, output, offset, downloadSize)
 }

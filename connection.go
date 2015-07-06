@@ -22,10 +22,10 @@ func (c *PoolConn) Close() error {
 }
 
 type ConnectionPool struct {
-	hosts    []string
-	port     int
-	minConns int
-	maxConns int
+	Hosts    []string
+	Port     int
+	MinConns int
+	MaxConns int
 	conns    chan net.Conn
 }
 
@@ -34,10 +34,10 @@ func NewConnectionPool(hosts []string, port int, minConns int, maxConns int) (*C
 		return nil, errors.New("invalid conns settings")
 	}
 	cp := &ConnectionPool{
-		hosts:    hosts,
-		port:     port,
-		minConns: minConns,
-		maxConns: maxConns,
+		Hosts:    hosts,
+		Port:     port,
+		MinConns: minConns,
+		MaxConns: maxConns,
 		conns:    make(chan net.Conn, maxConns),
 	}
 	for i := 0; i < minConns; i++ {
@@ -52,14 +52,12 @@ func NewConnectionPool(hosts []string, port int, minConns int, maxConns int) (*C
 }
 
 func (this *ConnectionPool) Get() (net.Conn, error) {
-	conns := this.getConns()
-	if conns == nil {
+	if this.conns == nil {
 		return nil, ErrClosed
 	}
-
 	for {
 		select {
-		case conn := <-conns:
+		case conn := <-this.conns:
 			if conn == nil {
 				break
 				//return nil, ErrClosed
@@ -69,7 +67,7 @@ func (this *ConnectionPool) Get() (net.Conn, error) {
 			}
 			return this.wrapConn(conn), nil
 		default:
-			if this.Len() >= this.maxConns {
+			if this.Len() >= this.MaxConns {
 				return nil, fmt.Errorf("Too many connctions %d", this.Len())
 			}
 			conn, err := this.makeConn()
@@ -77,7 +75,6 @@ func (this *ConnectionPool) Get() (net.Conn, error) {
 				return nil, err
 			}
 
-			this.conns <- conn
 			return this.wrapConn(conn), nil
 		}
 	}
@@ -100,18 +97,13 @@ func (this *ConnectionPool) Close() {
 }
 
 func (this *ConnectionPool) Len() int {
-	return len(this.getConns())
+	return len(this.conns)
 }
 
 func (this *ConnectionPool) makeConn() (net.Conn, error) {
-	host := this.hosts[rand.Intn(len(this.hosts))]
-	addr := fmt.Sprintf("%s:%d", host, this.port)
+	host := this.Hosts[rand.Intn(len(this.Hosts))]
+	addr := fmt.Sprintf("%s:%d", host, this.Port)
 	return net.DialTimeout("tcp", addr, time.Minute)
-}
-
-func (this *ConnectionPool) getConns() chan net.Conn {
-	conns := this.conns
-	return conns
 }
 
 func (this *ConnectionPool) put(conn net.Conn) error {
@@ -148,7 +140,7 @@ func (this *ConnectionPool) activeConn(conn net.Conn) error {
 }
 
 func TcpRecvResponse(conn net.Conn, bufferSize int64) ([]byte, int64, error) {
-	bb := bytes.NewBuffer(make([]byte, bufferSize))
+	bb := bytes.NewBuffer(make([]byte, 0, bufferSize))
 	total, err := io.CopyN(bb, conn, bufferSize)
 	return bb.Bytes(), total, err
 }

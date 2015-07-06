@@ -1,14 +1,13 @@
 package fdfs_client
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"os"
-	"path"
 	"time"
-	"bytes"
 )
 
 type StorageClient struct {
@@ -18,64 +17,80 @@ type StorageClient struct {
 	StorePathIndex int
 }
 
-func (this *StorageClient) UploadByFilename(filename string) (*UploadFileResponse, error) {
-	return this.UploadSlaveByFilename(filename, "", "")
-}
-
-func (this *StorageClient) UploadByBuffer(buf []byte, fileExtName string) (*UploadFileResponse, error) {
-	return this.UploadSlaveByBuffer(buf, "", fileExtName)
-}
-
-func (this *StorageClient) UploadSlaveByFilename(filename string, prefixName string, remoteFileId string) (*UploadFileResponse, error) {
+func (this *StorageClient) UploadByFilename(filename string) (*FileId, error) {
 	fileInfo, err := os.Stat(filename)
 	if err != nil {
 		return nil, err
 	}
 
 	fileSize := fileInfo.Size()
-	fileExtName := path.Ext(filename)
+	fileExtName := getFileExt(filename)
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 	return this.UploadEx(file, fileSize,
-		STORAGE_PROTO_CMD_UPLOAD_SLAVE_FILE, remoteFileId, prefixName, fileExtName)
+		STORAGE_PROTO_CMD_UPLOAD_FILE, "", "", fileExtName)
 }
 
-func (this *StorageClient) UploadSlaveByBuffer(buf []byte, remoteFileId string, fileExtName string) (*UploadFileResponse, error) {
+func (this *StorageClient) UploadByBuffer(buf []byte, fileExtName string) (*FileId, error) {
+	bufferSize := len(buf)
+	bb := bytes.NewReader(buf)
+	return this.UploadEx(bb, int64(bufferSize),
+		STORAGE_PROTO_CMD_UPLOAD_FILE, "", "", fileExtName)
+}
+
+func (this *StorageClient) UploadSlaveByFilename(filename string, prefixName string, masterFileId string) (*FileId, error) {
+	fileInfo, err := os.Stat(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	fileSize := fileInfo.Size()
+	fileExtName := getFileExt(filename)
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	return this.UploadEx(file, fileSize,
+		STORAGE_PROTO_CMD_UPLOAD_SLAVE_FILE, masterFileId, prefixName, fileExtName)
+}
+
+func (this *StorageClient) UploadSlaveByBuffer(buf []byte, remoteFileId string, fileExtName string) (*FileId, error) {
 	bufferSize := len(buf)
 	bb := bytes.NewReader(buf)
 	return this.UploadEx(bb, int64(bufferSize),
 		STORAGE_PROTO_CMD_UPLOAD_SLAVE_FILE, "", remoteFileId, fileExtName)
 }
 
-func (this *StorageClient) UploadAppenderByFilename(filename string) (*UploadFileResponse, error) {
-	fileInfo, err := os.Stat(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	fileSize := fileInfo.Size()
-	fileExtName := path.Ext(filename)
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	return this.UploadEx(file, fileSize,
-		STORAGE_PROTO_CMD_UPLOAD_APPENDER_FILE, "", "", fileExtName)
-}
-
-func (this *StorageClient) UploadAppenderByBuffer(buf []byte, fileExtName string) (*UploadFileResponse, error) {
-	bufferSize := len(buf)
-	bb := bytes.NewReader(buf)
-	return this.UploadEx(bb, int64(bufferSize), STORAGE_PROTO_CMD_UPLOAD_APPENDER_FILE, "", "", fileExtName)
-}
+//func (this *StorageClient) UploadAppenderByFilename(filename string, appenderFileId string) (*FileId, error) {
+//	fileInfo, err := os.Stat(filename)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	fileSize := fileInfo.Size()
+//	fileExtName := getFileExt(filename)
+//	file, err := os.Open(filename)
+//	if err != nil {
+//		return nil, err
+//	}
+//	defer file.Close()
+//
+//	return this.UploadEx(file, fileSize,
+//		STORAGE_PROTO_CMD_UPLOAD_APPENDER_FILE, "", "", fileExtName)
+//}
+//
+//func (this *StorageClient) UploadAppenderByBuffer(buf []byte, fileExtName string) (*FileId, error) {
+//	bufferSize := len(buf)
+//	bb := bytes.NewReader(buf)
+//	return this.UploadEx(bb, int64(bufferSize), STORAGE_PROTO_CMD_UPLOAD_APPENDER_FILE, "", "", fileExtName)
+//}
 
 func (this *StorageClient) UploadEx(input io.Reader, size int64,
-	cmd int8, masterFilename string, prefixName string, fileExtName string) (*UploadFileResponse, error) {
+	cmd int8, masterFilename string, prefixName string, fileExtName string) (*FileId, error) {
 
 	var (
 		conn        net.Conn
@@ -86,10 +101,10 @@ func (this *StorageClient) UploadEx(input io.Reader, size int64,
 	)
 
 	conn, err = this.makeConn()
-	defer conn.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 
 	masterFilenameLen := int64(len(masterFilename))
 	if len(this.GroupName) > 0 && len(masterFilename) > 0 {
@@ -113,24 +128,20 @@ func (this *StorageClient) UploadEx(input io.Reader, size int64,
 			FileExtName:       fileExtName,
 			MasterFilename:    masterFilename,
 		}
-		reqBuf, err = req.marshal()
+		reqBuf, err = req.Marshal()
 	} else {
 		req := UploadFileRequest{
 			StorePathIndex: uint8(this.StorePathIndex),
 			FileSize:       int64(size),
 			FileExtName:    fileExtName,
 		}
-		reqBuf, err = req.marshal()
+		reqBuf, err = req.Marshal()
 	}
 	if err != nil {
 		return nil, err
 	}
 	conn.Write(reqBuf)
-	if size > 0 {
-		_, err = io.CopyN(conn, input, size)
-	} else {
-		_, err = io.Copy(conn, input)
-	}
+	_, err = io.CopyN(conn, input, size)
 
 	if err != nil {
 		return nil, err
@@ -146,8 +157,8 @@ func (this *StorageClient) UploadEx(input io.Reader, size int64,
 		errmsg += fmt.Sprintf("expect: %d, actual: %d", th.PkgLen, recvSize)
 		return nil, errors.New(errmsg)
 	}
-	ur := &UploadFileResponse{}
-	err = ur.unmarshal(recvBuff)
+	ur := &FileId{}
+	err = ur.Unmarshal(recvBuff)
 	if err != nil {
 		errmsg := fmt.Sprintf("recvBuf can not unmarshal :%s", err.Error())
 		return nil, errors.New(errmsg)
@@ -156,7 +167,7 @@ func (this *StorageClient) UploadEx(input io.Reader, size int64,
 	return ur, nil
 }
 
-func (this *StorageClient) DeleteFile(remoteFileId string) error {
+func (this *StorageClient) DeleteFile(remoteFilename string) error {
 	var (
 		conn   net.Conn
 		reqBuf []byte
@@ -168,18 +179,17 @@ func (this *StorageClient) DeleteFile(remoteFileId string) error {
 		return err
 	}
 
-	fileNameLen := len(remoteFileId)
+	fileNameLen := len(remoteFilename)
 	th := TrackerHeader{
 		Cmd:    STORAGE_PROTO_CMD_DELETE_FILE,
 		PkgLen: int64(FDFS_GROUP_NAME_MAX_LEN + fileNameLen),
 	}
 	th.sendHeader(conn)
-
-	req := DeleteFileRequest{
-		GroupName:    this.GroupName,
-		RemoteFileId: remoteFileId,
+	fid := FileId{
+		GroupName: this.GroupName,
+		FileName:  remoteFilename,
 	}
-	reqBuf, err = req.marshal()
+	reqBuf, err = fid.Marshal()
 	if err != nil {
 		return err
 	}
@@ -187,6 +197,7 @@ func (this *StorageClient) DeleteFile(remoteFileId string) error {
 
 	th.recvHeader(conn)
 	if th.Status != 0 {
+		fmt.Println("DeleteFile:", th.Status)
 		return Errno{int(th.Status)}
 	}
 	return nil
@@ -217,9 +228,9 @@ func (this *StorageClient) DownloadEx(remoteFilename string, output io.Writer, o
 		Offset:       offset,
 		DownloadSize: downloadSize,
 		GroupName:    this.GroupName,
-		RemoteFileId: remoteFilename,
+		FileName:     remoteFilename,
 	}
-	reqBuf, e = req.marshal()
+	reqBuf, e = req.Marshal()
 	if e != nil {
 		return
 	}
@@ -228,6 +239,7 @@ func (this *StorageClient) DownloadEx(remoteFilename string, output io.Writer, o
 	th.recvHeader(conn)
 	if th.Status != 0 {
 		e = Errno{int(th.Status)}
+		fmt.Println("DownloadEx,", e)
 		return
 	}
 	size, e = io.CopyN(output, conn, th.PkgLen)

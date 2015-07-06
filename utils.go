@@ -47,10 +47,18 @@ func TrimCStr(cstr []byte) string {
 	return string(cstr)
 }
 
-func splitRemoteFileId(remoteFileId string) ([]string, error) {
+func splitRemoteFileId(remoteFileId string) (groupName, remoteFilename string, e error) {
 	parts := strings.SplitN(remoteFileId, "/", 2)
 	if len(parts) != 2 {
-		return nil, errors.New("error remoteFileId")
+		return "", "", errors.New("error remoteFileId")
 	}
-	return parts, nil
+	return parts[0], parts[1], nil
+}
+
+func getFileExt(filename string) string {
+	parts := strings.Split(filename, ".")
+	if len(parts) >= 2 {
+		return parts[len(parts)-1]
+	}
+	return ""
 }

@@ -58,7 +58,6 @@ func (this *TrackerClient) QueryStorageStoreWithGroup(groupName string) (*Storag
 		recvBuff []byte
 		err      error
 	)
-
 	conn, err = this.Pool.Get()
 	defer conn.Close()
 	if err != nil {
@@ -103,26 +102,20 @@ func (this *TrackerClient) QueryStorageStoreWithGroup(groupName string) (*Storag
 	return &StorageClient{ipAddr, int(port), groupName, int(storePathIndex)}, nil
 }
 
-func (this *TrackerClient) QueryStorageUpdate(remoteFileId string) (*StorageClient, error) {
-	return this.QueryStorage(remoteFileId, TRACKER_PROTO_CMD_SERVICE_QUERY_UPDATE)
+func (this *TrackerClient) QueryStorageUpdate(fileId *FileId) (*StorageClient, error) {
+	return this.QueryStorage(fileId, TRACKER_PROTO_CMD_SERVICE_QUERY_UPDATE)
 }
 
-func (this *TrackerClient) QueryStorageFetch(remoteFileId string) (*StorageClient, error) {
-	return this.QueryStorage(remoteFileId, TRACKER_PROTO_CMD_SERVICE_QUERY_FETCH_ONE)
+func (this *TrackerClient) QueryStorageFetch(fileId *FileId) (*StorageClient, error) {
+	return this.QueryStorage(fileId, TRACKER_PROTO_CMD_SERVICE_QUERY_FETCH_ONE)
 }
 
-func (this *TrackerClient) QueryStorage(remoteFileId string, cmd int8) (*StorageClient, error) {
+func (this *TrackerClient) QueryStorage(fileId *FileId, cmd int8) (*StorageClient, error) {
 	var (
 		conn     net.Conn
 		recvBuff []byte
 		err      error
 	)
-	tmp, err := splitRemoteFileId(remoteFileId)
-	if err != nil {
-		return nil, err
-	}
-	groupName := tmp[0]
-	remoteFilename := tmp[1]
 
 	conn, err = this.Pool.Get()
 	defer conn.Close()
@@ -131,15 +124,15 @@ func (this *TrackerClient) QueryStorage(remoteFileId string, cmd int8) (*Storage
 	}
 
 	th := TrackerHeader{}
-	th.PkgLen = int64(FDFS_GROUP_NAME_MAX_LEN + len(remoteFilename))
+	th.PkgLen = int64(FDFS_GROUP_NAME_MAX_LEN + len(fileId.FileName))
 	th.Cmd = cmd
 	th.sendHeader(conn)
 
 	// #query_fmt: |-group_name(16)-filename(file_name_len)-|
 	queryBuffer := make([]byte, th.PkgLen)
 	// 16 bit groupName
-	copy(queryBuffer[:16], groupName)
-	copy(queryBuffer[16:], remoteFilename)
+	copy(queryBuffer[:16], fileId.GroupName)
+	copy(queryBuffer[16:], fileId.FileName)
 
 	_, err = conn.Write(queryBuffer)
 	if err != nil {
@@ -162,7 +155,7 @@ func (this *TrackerClient) QueryStorage(remoteFileId string, cmd int8) (*Storage
 	}
 	buff := bytes.NewBuffer(recvBuff)
 	// #recv_fmt |-group_name(16)-ipaddr(16-1)-port(8)-store_path_index(1)|
-	groupName, err = readCstr(buff, FDFS_GROUP_NAME_MAX_LEN)
+	groupName, err := readCstr(buff, FDFS_GROUP_NAME_MAX_LEN)
 	ipAddr, err = readCstr(buff, IP_ADDRESS_SIZE-1)
 	binary.Read(buff, binary.BigEndian, &port)
 	binary.Read(buff, binary.BigEndian, &storePathIndex)

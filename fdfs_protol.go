@@ -138,10 +138,10 @@ const (
 )
 
 type Request interface {
-	marshal() ([]byte, error)
+	Marshal() ([]byte, error)
 }
 type Response interface {
-	unmarshal([]byte) error
+	Unmarshal([]byte) error
 }
 
 type RequestResponse interface {
@@ -155,15 +155,15 @@ type TrackerHeader struct {
 	Status int8
 }
 
-func (this *TrackerHeader) marshal() ([]byte, error) {
-	buffer := new(bytes.Buffer)
-	binary.Write(buffer, binary.BigEndian, this.PkgLen)
-	buffer.WriteByte(byte(this.Cmd))
-	buffer.WriteByte(byte(this.Status))
-	return buffer.Bytes(), nil
+func (this *TrackerHeader) Marshal() ([]byte, error) {
+	buf := make([]byte, 8+1+1)
+	binary.BigEndian.PutUint64(buf, uint64(this.PkgLen))
+	buf[8] = byte(this.Cmd)
+	buf[9] = byte(this.Status)
+	return buf, nil
 }
 
-func (this *TrackerHeader) unmarshal(data []byte) error {
+func (this *TrackerHeader) Unmarshal(data []byte) error {
 	if len(data) != 10 {
 		return errors.New("data less than 10")
 	}
@@ -177,7 +177,7 @@ func (this *TrackerHeader) unmarshal(data []byte) error {
 }
 
 func (this *TrackerHeader) sendHeader(conn net.Conn) {
-	buf, _ := this.marshal()
+	buf, _ := this.Marshal()
 	conn.Write(buf)
 }
 
@@ -188,7 +188,7 @@ func (this *TrackerHeader) recvHeader(conn net.Conn) {
 		return
 	}
 
-	err = this.unmarshal(buf)
+	err = this.Unmarshal(buf)
 }
 
 type UploadFileRequest struct {
@@ -197,11 +197,10 @@ type UploadFileRequest struct {
 	FileExtName    string
 }
 
-func (this *UploadFileRequest) marshal() ([]byte, error) {
+func (this *UploadFileRequest) Marshal() ([]byte, error) {
 	buf := make([]byte, 1+8+6)
 	buf[0] = byte(this.StorePathIndex)
-	buffer := bytes.NewBuffer(buf[1:9])
-	binary.Write(buffer, binary.BigEndian, this.FileSize)
+	binary.BigEndian.PutUint64(buf[1:9], uint64(this.FileSize))
 	// 6 bit fileExtName
 	copy(buf[9:], this.FileExtName)
 	return buf, nil
@@ -217,11 +216,10 @@ type UploadSlaveFileRequest struct {
 
 // #slave_fmt |-master_len(8)-file_size(8)-prefix_name(16)-file_ext_name(6)
 // #           -master_name(master_filename_len)-|
-func (this *UploadSlaveFileRequest) marshal() ([]byte, error) {
+func (this *UploadSlaveFileRequest) Marshal() ([]byte, error) {
 	buf := make([]byte, 8+8+16+6+this.MasterFileNameLen)
-	buffer := bytes.NewBuffer(buf[:16])
-	binary.Write(buffer, binary.BigEndian, this.MasterFileNameLen)
-	binary.Write(buffer, binary.BigEndian, this.FileSize)
+	binary.BigEndian.PutUint64(buf[16:24], uint64(this.MasterFileNameLen))
+	binary.BigEndian.PutUint64(buf[24:32], uint64(this.FileSize))
 	// 16 bit prefixName
 	copy(buf[16:32], this.PrefixName)
 	// 6 bit fileExtName
@@ -232,68 +230,59 @@ func (this *UploadSlaveFileRequest) marshal() ([]byte, error) {
 	return buf, nil
 }
 
-type UploadFileResponse struct {
-	GroupName    string
-	RemoteFileId string
+type FileId struct {
+	GroupName string
+	FileName  string
 }
 
 // recv_fmt: |-group_name(16)-remote_file_name(recv_size - 16)-|
-func (this *UploadFileResponse) unmarshal(data []byte) error {
+func (fid *FileId) Unmarshal(data []byte) error {
 	if len(data) < FDFS_GROUP_NAME_MAX_LEN {
 		return Errno{255}
 	}
-	this.GroupName = TrimCStr(data[:FDFS_GROUP_NAME_MAX_LEN])
-	this.RemoteFileId = string(data[FDFS_GROUP_NAME_MAX_LEN:])
+	fid.GroupName = TrimCStr(data[:FDFS_GROUP_NAME_MAX_LEN])
+	fid.FileName = string(data[FDFS_GROUP_NAME_MAX_LEN:])
 	return nil
 }
-
-type DeleteFileRequest struct {
-	GroupName    string
-	RemoteFileId string
-}
-
-// #del_fmt: |-group_name(16)-filename(len)-|
-func (this *DeleteFileRequest) marshal() ([]byte, error) {
-	buffer := make([]byte, 16+len(this.RemoteFileId))
+func (fid *FileId) Marshal() ([]byte, error) {
+	buffer := make([]byte, 16+len(fid.FileName))
 	// 16 bit groupName
-	copy(buffer[:16], this.GroupName)
+	copy(buffer[:16], fid.GroupName)
 	// remoteFilenameLen bit remoteFilename
-	copy(buffer[16:], this.RemoteFileId)
+	copy(buffer[16:], fid.FileName)
 	return buffer, nil
 }
 
-type DeleteFileResponse struct {
-	GroupName    string
-	RemoteFileId string
+func (this *FileId) GetFileIdStr() string {
+	return this.GroupName + "/" + this.FileName
 }
 
-// recv_fmt: |-group_name(16)-remote_file_name(recv_size - 16)-|
-func (this *DeleteFileResponse) unmarshal(data []byte) error {
-	if len(data) < FDFS_GROUP_NAME_MAX_LEN {
-		return Errno{255}
+func NewFileIdFromStr(s string) (*FileId, error) {
+	fid := FileId{}
+	var err error
+	fid.GroupName, fid.FileName, err = splitRemoteFileId(s)
+	if err != nil {
+		return nil, err
 	}
-	this.GroupName = TrimCStr(data[:FDFS_GROUP_NAME_MAX_LEN])
-	this.RemoteFileId = string(data[FDFS_GROUP_NAME_MAX_LEN:])
-	return nil
+	return &fid, nil
 }
 
 type DownloadFileRequest struct {
 	Offset       int64
 	DownloadSize int64
 	GroupName    string
-	RemoteFileId string
+	FileName     string
 }
 
 // #down_fmt: |-offset(8)-download_bytes(8)-group_name(16)-remote_filename(len)-|
-func (this *DownloadFileRequest) marshal() ([]byte, error) {
-	buf := make([]byte, 8+8+16+len(this.RemoteFileId))
-	buffer := bytes.NewBuffer(buf[:16])
-	binary.Write(buffer, binary.BigEndian, this.Offset)
-	binary.Write(buffer, binary.BigEndian, this.DownloadSize)
+func (this *DownloadFileRequest) Marshal() ([]byte, error) {
+	buf := make([]byte, 8+8+16+len(this.FileName))
+	binary.BigEndian.PutUint64(buf[16:24], uint64(this.Offset))
+	binary.BigEndian.PutUint64(buf[24:32], uint64(this.DownloadSize))
 	// 16 bit groupName
 	copy(buf[16:32], this.GroupName)
 	// remoteFilenameLen bit remoteFilename
-	copy(buf[32:], this.RemoteFileId)
+	copy(buf[32:], this.FileName)
 
 	return buf, nil
 }
