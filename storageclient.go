@@ -232,7 +232,7 @@ func (this *StorageClient) DownloadEx(remoteFilename string, output io.Writer, o
 	}
 	size, e = io.CopyN(output, conn, th.PkgLen)
 
-	if e < downloadSize {
+	if size < downloadSize {
 		errmsg := "[-] Error: Storage response length is not match, "
 		errmsg += fmt.Sprintf("expect: %d, actual: %d", th.PkgLen, size)
 		e = errors.New(errmsg)
@@ -244,7 +244,7 @@ func (this *StorageClient) Download(remoteFilename string, output io.Writer) (si
 	return this.DownloadEx(remoteFilename, output, 0, 0)
 }
 
-func (this *StorageClient) DownloadToFile(remoteFilename string, localFilename string) error {
+func (this *StorageClient) DownloadToFile(remoteFilename string, localFilename string) (size int64, e error) {
 	file, err := os.Create(localFilename)
 	if err != nil {
 		return 0, err

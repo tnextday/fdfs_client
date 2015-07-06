@@ -128,7 +128,7 @@ func (this *FdfsClient) DownloadEx(remoteFileId string, output io.Writer, offset
 	tc := TrackerClient{this.ConnPool}
 	store, err := tc.QueryStorageFetch(remoteFileId)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	return store.DownloadEx(remoteFileId, output, offset, downloadSize)
 }
