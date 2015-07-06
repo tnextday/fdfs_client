@@ -115,12 +115,6 @@ const (
 	FDFS_FILE_EXT_NAME_MAX_LEN  = 6
 	FDFS_SPACE_SIZE_BASE_INDEX  = 2 // storage space size based (MB)
 
-	FDFS_UPLOAD_BY_BUFFER   = 1
-	FDFS_UPLOAD_BY_FILENAME = 2
-	FDFS_UPLOAD_BY_FILE     = 3
-	FDFS_DOWNLOAD_TO_BUFFER = 1
-	FDFS_DOWNLOAD_TO_FILE   = 2
-
 	FDFS_NORMAL_LOGIC_FILENAME_LENGTH = (FDFS_LOGIC_FILE_PATH_LEN + FDFS_FILENAME_BASE64_LENGTH + FDFS_FILE_EXT_NAME_MAX_LEN + 1)
 
 	FDFS_TRUNK_FILENAME_LENGTH       = (FDFS_TRUE_FILE_PATH_LEN + FDFS_FILENAME_BASE64_LENGTH + FDFS_TRUNK_FILE_INFO_LEN + 1 + FDFS_FILE_EXT_NAME_MAX_LEN)
@@ -302,10 +296,4 @@ func (this *DownloadFileRequest) marshal() ([]byte, error) {
 	copy(buf[32:], this.RemoteFileId)
 
 	return buf, nil
-}
-
-type DownloadFileResponse struct {
-	RemoteFileId string
-	Content      interface{}
-	DownloadSize int64
 }

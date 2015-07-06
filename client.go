@@ -13,14 +13,12 @@ var (
 
 type FdfsClient struct {
 	ConnPool *ConnectionPool
-	timeout     int
+	timeout  int
 }
-
 
 func init() {
 	logger.Formatter = new(logrus.TextFormatter)
 }
-
 
 func (this *FdfsClient) UploadByFilename(filename string) (*UploadFileResponse, error) {
 	if _, err := os.Stat(filename); err != nil {
@@ -155,7 +153,6 @@ func (this *FdfsClient) DownloadToBuffer(remoteFileId string, offset int64, down
 	if err != nil {
 		return nil, err
 	}
-
 	var fileBuffer []byte
 	return store.DownloadToBuffer(fileBuffer, offset, downloadSize, remoteFilename)
 }

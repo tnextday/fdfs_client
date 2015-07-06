@@ -149,27 +149,8 @@ func (this *ConnectionPool) activeConn(conn net.Conn) error {
 	return errors.New("Conn unaliviable")
 }
 
-func TcpSendFile(conn net.Conn, filename string) error {
-	file, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	_, e := io.Copy(conn, file)
-	return e
-}
-
 func TcpRecvResponse(conn net.Conn, bufferSize int64) ([]byte, int64, error) {
 	bb := bytes.NewBuffer(make([]byte, bufferSize))
 	total, err := io.CopyN(bb, conn, bufferSize)
 	return bb.Bytes(), total, err
-}
-
-func TcpRecvFile(conn net.Conn, localFilename string, bufferSize int64) (int64, error) {
-	file, err := os.Create(localFilename)
-	if err != nil {
-		return 0, err
-	}
-	defer file.Close()
-	return io.Copy(file, conn)
 }
