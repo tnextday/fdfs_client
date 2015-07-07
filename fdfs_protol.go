@@ -218,8 +218,8 @@ type UploadSlaveFileRequest struct {
 // #           -master_name(master_filename_len)-|
 func (this *UploadSlaveFileRequest) Marshal() ([]byte, error) {
 	buf := make([]byte, 8+8+16+6+this.MasterFileNameLen)
-	binary.BigEndian.PutUint64(buf[16:24], uint64(this.MasterFileNameLen))
-	binary.BigEndian.PutUint64(buf[24:32], uint64(this.FileSize))
+	binary.BigEndian.PutUint64(buf[:8], uint64(this.MasterFileNameLen))
+	binary.BigEndian.PutUint64(buf[8:16], uint64(this.FileSize))
 	// 16 bit prefixName
 	copy(buf[16:32], this.PrefixName)
 	// 6 bit fileExtName
