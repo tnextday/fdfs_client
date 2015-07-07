@@ -202,7 +202,7 @@ func (this *StorageClient) DeleteFile(remoteFilename string) error {
 
 	th.recvHeader(conn)
 	if th.Status != 0 {
-		fmt.Println("DeleteFile:", th.Status)
+//		fmt.Println("DeleteFile:", th.Status)
 		return Errno{int(th.Status)}
 	}
 	return nil
@@ -244,7 +244,7 @@ func (this *StorageClient) DownloadEx(remoteFilename string, output io.Writer, o
 	th.recvHeader(conn)
 	if th.Status != 0 {
 		e = Errno{int(th.Status)}
-		fmt.Println("DownloadEx,", e)
+//		fmt.Println("DownloadEx,", e)
 		return
 	}
 	size, e = io.CopyN(output, conn, th.PkgLen)
