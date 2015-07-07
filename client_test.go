@@ -262,9 +262,8 @@ func TestFileContent(t *testing.T) {
 	fdfsClient := FdfsClient{ConnPool: connPool}
 	bs := []byte("1234567890abcdef")
 	rand.Seed(time.Now().Unix())
-	for i := 0; i < 1; i++ {
-		sz := 1 + rand.Int63n(0xFFFFFFFF)
-		sz = 2712547097
+	for i := 0; i < 5; i++ {
+		sz := 1 + rand.Int63n(0xFFFFF)
 		mtd := MemData{FillBytes: bs, Size: sz}
 
 		remoteFileId, e := fdfsClient.UploadByReader(&mtd, mtd.Size, "bin")
