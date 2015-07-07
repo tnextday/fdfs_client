@@ -50,7 +50,10 @@ func (td *MemData) Read(p []byte) (n int, err error) {
 
 	fbSz := int64(len(td.FillBytes))
 	o1 := td.readOffset % fbSz
-	l1 := fbSz - o1
+	l1 := int64(0)
+	if o1 > 0 {
+		l1 = fbSz - o1
+	}
 	rs := (int64(n) - l1) / fbSz
 	l2 := int64(n) - rs*fbSz - l1
 	//	fmt.Printf("ro=%d,n=%d,fbSz=%d,o1=%d,rs=%d,l2=%d\n", td.readOffset,n,fbSz, o1,rs,l2)
@@ -90,27 +93,36 @@ func (td *MemData) Write(p []byte) (n int, err error) {
 	}
 	fbSz := int64(len(td.FillBytes))
 	o1 := td.writeOffset % fbSz
-	l1 := fbSz - o1
+	l1 := int64(0)
+	if o1 > 0 {
+		l1 = fbSz - o1
+	}
 	rs := (int64(n) - l1) / fbSz
 	l2 := int64(n) - rs*fbSz - l1
 	//	fmt.Printf("wo=%d,n=%d,fbSz=%d,o1=%d,rs=%d,l2=%d\n", td.writeOffset,n,fbSz, o1,rs,l2)
 	i := 0
 	if o1 > 0 {
-		if !bytes.HasPrefix(p[i:], td.FillBytes[o1:]) {
-			return i, fmt.Errorf("Date chek error0, offset %d\n%s", td.writeOffset, dumpPrefixBytes(p[i:], 32))
+		if len(p[i:]) > len(td.FillBytes[o1:]) {
+			if !bytes.HasPrefix(p[i:], td.FillBytes[o1:]) {
+				return i, fmt.Errorf("Date check error0, offset %d\n%s", td.writeOffset, dumpPrefixBytes(p[i:], 32))
+			}
+		} else {
+			if !bytes.HasPrefix(td.FillBytes[o1:], p[i:]) {
+				return i, fmt.Errorf("Date check error0, offset %d\n%s", td.writeOffset, dumpPrefixBytes(p[i:], 32))
+			}
 		}
 		i += int(fbSz - o1)
 		td.writeOffset += (fbSz - o1)
 	}
 	for j := int64(0); j < rs; j++ {
 		if !bytes.HasPrefix(p[i:], td.FillBytes) {
-			return i, fmt.Errorf("Date chek error1, offset %d\n%s", td.writeOffset, dumpPrefixBytes(p[i:], 32))
+			return i, fmt.Errorf("Date check error1, offset %d\n%s", td.writeOffset, dumpPrefixBytes(p[i:], 32))
 		}
 		i += int(fbSz)
 		td.writeOffset += fbSz
 	}
 	if l2 > 0 && !bytes.HasPrefix(p[i:], td.FillBytes[:l2]) {
-		return i, fmt.Errorf("Date chek err2, offset %d\n%s", td.writeOffset, dumpPrefixBytes(p[i:], 32))
+		return i, fmt.Errorf("Date check err2, offset %d\n%s", td.writeOffset, dumpPrefixBytes(p[i:], 32))
 	}
 	td.writeOffset += l2
 	return
@@ -234,8 +246,42 @@ func TestDownloadToFile(t *testing.T) {
 	os.Remove(localFilename)
 }
 
+func formatSize(sz int64) string {
+	if sz < 1024*1024 {
+		return fmt.Sprintf("%.2f Kb", float64(sz)/1024.0)
+	} else if sz < 1024*1024*1024 {
+		return fmt.Sprintf("%.2f Mb", float64(sz)/(1024*1024.0))
+	} else if sz < 1024*1024*1024*1024 {
+		return fmt.Sprintf("%.2f Gb", float64(sz)/(1024*1024*1024.0))
+	} else {
+		return fmt.Sprintf("%.2f Tb", float64(sz)/(1024*1024*1024*1024.0))
+	}
+}
+
 func TestFileContent(t *testing.T) {
-	//	fdfsClient := FdfsClient{ConnPool: connPool}
+	fdfsClient := FdfsClient{ConnPool: connPool}
+	bs := []byte("1234567890abcdef")
+	rand.Seed(time.Now().Unix())
+	for i := 0; i < 1; i++ {
+		sz := 1 + rand.Int63n(0xFFFFFFFF)
+		sz = 2712547097
+		mtd := MemData{FillBytes: bs, Size: sz}
+
+		remoteFileId, e := fdfsClient.UploadByReader(&mtd, mtd.Size, "bin")
+		t.Logf("Upload fileSize=%s(%d),\tid=%s\n", formatSize(sz), sz, remoteFileId)
+		if e != nil {
+			t.Fatal(e)
+		}
+//		remoteFileId := "apk1/M00/00/08/wKjHAlWbqeSARKSMoa4vGf2SnsM024.bin"
+		sz, e = fdfsClient.DownloadEx(remoteFileId, &mtd, 0, 0)
+		fdfsClient.DeleteFile(remoteFileId)
+		if e != nil {
+			t.Fatalf("download %s, err: %s", remoteFileId, e.Error())
+		}
+		if sz != mtd.Size {
+			t.Fatalf("download %s, size error: %d", remoteFileId, sz)
+		}
+	}
 }
 
 func BenchmarkUpload(b *testing.B) {

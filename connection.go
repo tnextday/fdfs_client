@@ -83,9 +83,9 @@ func (this *ConnectionPool) Get() (net.Conn, error) {
 				break
 				//return nil, ErrClosed
 			}
-//			if err := this.activeConn(conn); err != nil {
-//				break
-//			}
+			//			if err := this.activeConn(conn); err != nil {
+			//				break
+			//			}
 			return this.wrapConn(conn), nil
 		default:
 			if this.Len() >= this.MaxConns {
