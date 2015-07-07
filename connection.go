@@ -14,11 +14,32 @@ var ErrClosed = errors.New("pool is closed")
 
 type PoolConn struct {
 	net.Conn
-	pool *ConnectionPool
+	lastErr error
+	pool    *ConnectionPool
 }
 
 func (c *PoolConn) Close() error {
-	return c.pool.put(c.Conn)
+	if c.lastErr != nil {
+		return c.Conn.Close()
+	} else {
+		return c.pool.put(c.Conn)
+	}
+}
+
+func (c *PoolConn) Read(b []byte) (n int, err error) {
+	n, err = c.Conn.Read(b)
+	if err != nil {
+		c.lastErr = err
+	}
+	return
+}
+
+func (c *PoolConn) Write(b []byte) (n int, err error) {
+	n, err = c.Conn.Write(b)
+	if err != nil {
+		c.lastErr = err
+	}
+	return
 }
 
 type ConnectionPool struct {
@@ -62,9 +83,9 @@ func (this *ConnectionPool) Get() (net.Conn, error) {
 				break
 				//return nil, ErrClosed
 			}
-			if err := this.activeConn(conn); err != nil {
-				break
-			}
+//			if err := this.activeConn(conn); err != nil {
+//				break
+//			}
 			return this.wrapConn(conn), nil
 		default:
 			if this.Len() >= this.MaxConns {

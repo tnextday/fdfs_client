@@ -41,6 +41,11 @@ func (this *StorageClient) UploadByBuffer(buf []byte, fileExtName string) (*File
 		STORAGE_PROTO_CMD_UPLOAD_FILE, "", "", fileExtName)
 }
 
+func (this *StorageClient) UploadByReader(reader io.Reader, size int64, fileExtName string) (*FileId, error) {
+	return this.UploadEx(reader, size,
+		STORAGE_PROTO_CMD_UPLOAD_FILE, "", "", fileExtName)
+}
+
 func (this *StorageClient) UploadSlaveByFilename(filename string, prefixName string, masterFileId string) (*FileId, error) {
 	fileInfo, err := os.Stat(filename)
 	if err != nil {

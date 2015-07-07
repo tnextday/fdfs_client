@@ -1,13 +1,13 @@
 package fdfs_client
 
 import (
+	"bytes"
+	"encoding/hex"
 	"fmt"
+	"io"
+	"math/rand"
 	"os"
 	"testing"
-	"io"
-	"encoding/hex"
-	"bytes"
-	"math/rand"
 	"time"
 )
 
@@ -31,20 +31,20 @@ func init() {
 	}
 }
 
-type MemTestData struct {
-	FillBytes 	[]byte
-	Size 		int64
+type MemData struct {
+	FillBytes   []byte
+	Size        int64
 	readOffset  int64
 	writeOffset int64
 }
 
-func(td *MemTestData) Read(p []byte) (n int, err error){
-	if td.readOffset >= td.Size{
+func (td *MemData) Read(p []byte) (n int, err error) {
+	if td.readOffset >= td.Size {
 		return 0, io.EOF
 	}
 	err = nil
 	n = len(p)
-	if (td.Size - td.readOffset) < int64(n){
+	if (td.Size - td.readOffset) < int64(n) {
 		n = int(td.Size - td.readOffset)
 	}
 
@@ -52,20 +52,20 @@ func(td *MemTestData) Read(p []byte) (n int, err error){
 	o1 := td.readOffset % fbSz
 	l1 := fbSz - o1
 	rs := (int64(n) - l1) / fbSz
-	l2 := int64(n) - rs * fbSz - l1
-//	fmt.Printf("ro=%d,n=%d,fbSz=%d,o1=%d,rs=%d,l2=%d\n", td.readOffset,n,fbSz, o1,rs,l2)
+	l2 := int64(n) - rs*fbSz - l1
+	//	fmt.Printf("ro=%d,n=%d,fbSz=%d,o1=%d,rs=%d,l2=%d\n", td.readOffset,n,fbSz, o1,rs,l2)
 	i := int64(0)
 	if o1 > 0 {
 		copy(p[i:], td.FillBytes[o1:])
 		i += (fbSz - o1)
 	}
-	for j := int64(0); j < rs; j++{
+	for j := int64(0); j < rs; j++ {
 		copy(p[i:], td.FillBytes)
 		i += fbSz
 	}
-	if (l2 > 0){
+	if l2 > 0 {
 		copy(p[i:], td.FillBytes[:l2])
-//		fmt.Printf("read last %d bytes\n%s", l2, dumpPrefixBytes(p[i:], int(l2)))
+		//		fmt.Printf("read last %d bytes\n%s", l2, dumpPrefixBytes(p[i:], int(l2)))
 	}
 	td.readOffset += int64(n)
 	return
@@ -74,35 +74,35 @@ func(td *MemTestData) Read(p []byte) (n int, err error){
 func dumpPrefixBytes(bs []byte, max int) string {
 	if len(bs) > max {
 		return hex.Dump(bs[:max])
-	}else{
+	} else {
 		return hex.Dump(bs)
 	}
 }
 
-func(td *MemTestData) Write(p []byte) (n int, err error){
-	if td.writeOffset >= td.Size{
+func (td *MemData) Write(p []byte) (n int, err error) {
+	if td.writeOffset >= td.Size {
 		return 0, io.EOF
 	}
 	err = nil
 	n = len(p)
-	if (td.Size - td.writeOffset) < int64(n){
+	if (td.Size - td.writeOffset) < int64(n) {
 		n = int(td.Size - td.writeOffset)
 	}
 	fbSz := int64(len(td.FillBytes))
 	o1 := td.writeOffset % fbSz
 	l1 := fbSz - o1
 	rs := (int64(n) - l1) / fbSz
-	l2 := int64(n) - rs * fbSz - l1
-//	fmt.Printf("wo=%d,n=%d,fbSz=%d,o1=%d,rs=%d,l2=%d\n", td.writeOffset,n,fbSz, o1,rs,l2)
+	l2 := int64(n) - rs*fbSz - l1
+	//	fmt.Printf("wo=%d,n=%d,fbSz=%d,o1=%d,rs=%d,l2=%d\n", td.writeOffset,n,fbSz, o1,rs,l2)
 	i := 0
-	if o1 > 0{
+	if o1 > 0 {
 		if !bytes.HasPrefix(p[i:], td.FillBytes[o1:]) {
 			return i, fmt.Errorf("Date chek error0, offset %d\n%s", td.writeOffset, dumpPrefixBytes(p[i:], 32))
 		}
 		i += int(fbSz - o1)
 		td.writeOffset += (fbSz - o1)
 	}
-	for j := int64(0); j < rs; j++{
+	for j := int64(0); j < rs; j++ {
 		if !bytes.HasPrefix(p[i:], td.FillBytes) {
 			return i, fmt.Errorf("Date chek error1, offset %d\n%s", td.writeOffset, dumpPrefixBytes(p[i:], 32))
 		}
@@ -116,21 +116,29 @@ func(td *MemTestData) Write(p []byte) (n int, err error){
 	return
 }
 
-func(td *MemTestData) Reset(){
+func (td *MemData) ResetAll() {
 	td.readOffset = 0
+	td.writeOffset = 0
+}
+
+func (td *MemData) ResetRead() {
+	td.readOffset = 0
+}
+
+func (td *MemData) ResetWrite() {
 	td.writeOffset = 0
 }
 
 func TestMemData(t *testing.T) {
 	bs := []byte("1234567890abcdef")
 	rand.Seed(time.Now().Unix())
-	for i := 0; i < 10; i++{
-		fb := bs[:1 + rand.Int31n(16)]
-		sz := 1+rand.Int63n(0xFFFF)
-		t.Logf("fbSize=%d, fileSize=%d\n", len(fb),sz)
-		mtd := MemTestData{FillBytes:fb, Size:sz}
+	for i := 0; i < 1; i++ {
+		fb := bs[:1+rand.Int31n(16)]
+		sz := 1 + rand.Int63n(0xFFFF)
+		t.Logf("fbSize=%d, fileSize=%d\n", len(fb), sz)
+		mtd := MemData{FillBytes: fb, Size: sz}
 		n, e := io.Copy(&mtd, &mtd)
-		if e != nil{
+		if e != nil {
 			t.Fatal(e)
 		}
 		if n != sz {
@@ -226,44 +234,19 @@ func TestDownloadToFile(t *testing.T) {
 	os.Remove(localFilename)
 }
 
-func BenchmarkUploadByBuffer(b *testing.B) {
-	fdfsClient := FdfsClient{ConnPool: connPool}
-	file, err := os.Open("testfile") // For read access.
-	if err != nil {
-		fmt.Errorf("%s", err.Error())
-	}
-
-	var fileSize int64 = 0
-	if fileInfo, err := file.Stat(); err == nil {
-		fileSize = fileInfo.Size()
-	}
-	fileBuffer := make([]byte, fileSize)
-	_, err = file.Read(fileBuffer)
-	if err != nil {
-		fmt.Errorf("%s", err.Error())
-	}
-
-	b.StopTimer()
-	b.StartTimer()
-
-	for i := 0; i < b.N; i++ {
-		remoteFileId, err := fdfsClient.UploadByBuffer(fileBuffer, "txt")
-		if err != nil {
-			fmt.Errorf("TestUploadByBuffer error %s", err.Error())
-		}
-
-		fdfsClient.DeleteFile(remoteFileId)
-	}
+func TestFileContent(t *testing.T) {
+	//	fdfsClient := FdfsClient{ConnPool: connPool}
 }
 
-func BenchmarkUploadByFilename(b *testing.B) {
+func BenchmarkUpload(b *testing.B) {
 	fdfsClient := FdfsClient{ConnPool: connPool}
 
-	b.StopTimer()
-	b.StartTimer()
+	b.ResetTimer()
 
+	mtd := MemData{FillBytes: []byte("1234567890abcdef"), Size: 1024 * 1024}
 	for i := 0; i < b.N; i++ {
-		remoteFileId, err := fdfsClient.UploadByFilename("README.md")
+		mtd.ResetRead()
+		remoteFileId, err := fdfsClient.UploadByReader(&mtd, mtd.Size, "png")
 		if err != nil {
 			fmt.Errorf("UploadByfilename error %s", err.Error())
 		}
@@ -274,25 +257,42 @@ func BenchmarkUploadByFilename(b *testing.B) {
 	}
 }
 
-func BenchmarkDownloadToFile(b *testing.B) {
+func BenchmarkDownload(b *testing.B) {
 	fdfsClient := FdfsClient{ConnPool: connPool}
-
-	remoteFileId, err := fdfsClient.UploadByFilename("README.md")
-	defer fdfsClient.DeleteFile(remoteFileId)
+	mtd := MemData{FillBytes: []byte("1234567890abcdef"), Size: 1024 * 1024}
+	remoteFileId, err := fdfsClient.UploadByReader(&mtd, mtd.Size, "png")
 	if err != nil {
-		fmt.Errorf("UploadByfilename error %s", err.Error())
+		fmt.Errorf("UploadByReader error %s", err.Error())
 	}
-	b.StopTimer()
-	b.StartTimer()
+	defer fdfsClient.DeleteFile(remoteFileId)
+	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
-		var (
-			localFilename string = "download.txt"
-		)
-		_, err = fdfsClient.DownloadToFile(remoteFileId, localFilename)
+		mtd.ResetWrite()
+		_, err = fdfsClient.DownloadEx(remoteFileId, &mtd, 0, 0)
 		if err != nil {
 			fmt.Errorf("DownloadToFile error %s", err.Error())
 		}
-		os.Remove(localFilename)
-		// fmt.Println(downloadResponse.RemoteFileId)
+	}
+}
+
+// go test -run=none -bench=BenchmarkQueryStorageFetch -cpuprofile=cprof
+// go tool pprof --text fdfs_client.test cprof
+func BenchmarkQueryStorageFetch(b *testing.B) {
+	fdfsClient := FdfsClient{ConnPool: connPool}
+	mtd := MemData{FillBytes: []byte("1234567890abcdef"), Size: 1024 * 1024}
+	remoteFileId, err := fdfsClient.UploadByReader(&mtd, mtd.Size, "png")
+	if err != nil {
+		fmt.Errorf("UploadByReader error %s", err.Error())
+	}
+	defer fdfsClient.DeleteFile(remoteFileId)
+	fid, _ := NewFileIdFromStr(remoteFileId)
+	b.ResetTimer()
+	tc := TrackerClient{connPool}
+	for i := 0; i < b.N; i++ {
+		store, e := tc.QueryStorageFetch(fid)
+		if e != nil || store.IpAddr == "" {
+			b.Fatal("QueryStorageFetch error, ", e)
+		}
 	}
 }

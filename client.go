@@ -41,6 +41,19 @@ func (this *FdfsClient) UploadByBuffer(fileBuffer []byte, fileExtName string) (r
 	return fid.GetFileIdStr(), nil
 }
 
+func (this *FdfsClient) UploadByReader(reader io.Reader, size int64, fileExtName string) (remoteFileId string, e error) {
+	tc := TrackerClient{this.ConnPool}
+	store, err := tc.QueryStorageStoreWithoutGroup()
+	if err != nil {
+		return "", err
+	}
+	fid, e := store.UploadByReader(reader, size, fileExtName)
+	if e != nil {
+		return "", e
+	}
+	return fid.GetFileIdStr(), nil
+}
+
 func (this *FdfsClient) UploadSlaveByFilename(filename, masterFileId, prefixName string) (remoteFileId string, e error) {
 	if _, err := os.Stat(filename); err != nil {
 		return "", errors.New(err.Error() + "(uploading)")
