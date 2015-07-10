@@ -20,6 +20,7 @@ type PoolConn struct {
 
 func (c *PoolConn) Close() error {
 	if c.lastErr != nil {
+//		fmt.Println("PoolConn close with error, ", c.lastErr)
 		return c.Conn.Close()
 	} else {
 		return c.pool.put(c.Conn)
