@@ -40,6 +40,7 @@ type MemData struct {
 
 func (td *MemData) Read(p []byte) (n int, err error) {
 	if td.readOffset >= td.Size {
+		fmt.Printf("MemData read offset %d, size %d\n", td.readOffset, td.Size)
 		return 0, io.EOF
 	}
 	err = nil
@@ -84,6 +85,7 @@ func dumpPrefixBytes(bs []byte, max int) string {
 
 func (td *MemData) Write(p []byte) (n int, err error) {
 	if td.writeOffset >= td.Size {
+		fmt.Printf("MemData write offset %d, size %d\n", td.writeOffset, td.Size)
 		return 0, io.EOF
 	}
 	err = nil

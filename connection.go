@@ -55,6 +55,12 @@ func NewConnectionPool(hosts []string, port int, minConns int, maxConns int) (*C
 	if minConns < 0 || maxConns <= 0 || minConns > maxConns {
 		return nil, errors.New("invalid conns settings")
 	}
+	if len(hosts) == 0 {
+		return nil, errors.New("no hosts found")
+	}
+	if port == 0 {
+		return nil, errors.New("port must not be zero.")
+	}
 	cp := &ConnectionPool{
 		Hosts:    hosts,
 		Port:     port,
@@ -84,9 +90,9 @@ func (this *ConnectionPool) Get() (net.Conn, error) {
 				break
 				//return nil, ErrClosed
 			}
-			//			if err := this.activeConn(conn); err != nil {
-			//				break
-			//			}
+			if err := this.activeConn(conn); err != nil {
+				break
+			}
 			return this.wrapConn(conn), nil
 		default:
 			if this.Len() >= this.MaxConns {
